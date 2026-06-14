@@ -25,6 +25,8 @@ First functional release. An Italian-first, self-hosted manga downloader.
 - **Vue 3 SPA**: libraries, search + add, series detail (chapters, backfill, follow, covers),
   jobs (live), settings (effective config + provider health).
 - **REST API** with structured error responses; SQLite via Alembic migrations (12 tables).
+- **Optional auth**: single-admin HTTP Basic gate over `/api` and `/opds` (`AUTH_ENABLED` +
+  `ADMIN_PASSWORD`; `/api/health` stays public), with a frontend login screen.
 
 ### Known limitations / roadmap
 - **Cloudflare solver** dispatch (Playwright/FlareSolverr) not yet implemented — CF-fronted

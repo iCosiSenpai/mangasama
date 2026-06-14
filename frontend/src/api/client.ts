@@ -30,6 +30,18 @@ client.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     const status = error.response?.status ?? 0
+    // Auth gate: a 401 means the (optional) Basic gate rejected us — drop any
+    // stale credential and bounce to the login screen. Dynamic imports avoid a
+    // static import cycle (auth store → client; router → views → stores).
+    if (status === 401) {
+      localStorage.removeItem('mangasama.auth')
+      delete client.defaults.headers.common.Authorization
+      void import('@/router').then(({ router }) => {
+        if (router.currentRoute.value.name !== 'login') {
+          void router.push({ name: 'login' })
+        }
+      })
+    }
     const data = (error.response?.data ?? {}) as {
       detail?: string
       type?: string

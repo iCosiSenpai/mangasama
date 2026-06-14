@@ -128,6 +128,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 logger.error("mangasama.download_workers_stop_failed", error=str(e))
 
 
+def _path_needs_auth(path: str) -> bool:
+    """Protect the API and OPDS catalog; leave `/api/health` and the SPA
+    static assets public."""
+    if path == "/api/health":
+        return False
+    return path.startswith("/api") or path.startswith("/opds")
+
+
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
@@ -148,6 +156,26 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Optional single-admin HTTP Basic gate over /api and /opds. No-op unless
+    # AUTH_ENABLED=true. `/api/health` and the SPA static stay public so the
+    # Docker healthcheck and the login page can load.
+    @app.middleware("http")
+    async def _auth_guard(request, call_next):
+        settings = get_settings()
+        if (
+            settings.auth_enabled
+            and request.method != "OPTIONS"
+            and _path_needs_auth(request.url.path)
+        ):
+            from app.core.auth import check_basic_auth
+
+            if not check_basic_auth(request.headers.get("Authorization"), settings.admin_password):
+                return Response(
+                    status_code=401,
+                    headers={"WWW-Authenticate": 'Basic realm="MangaSama"'},
+                )
+        return await call_next(request)
 
     # Static frontend (built Vue app).
     web_dir = Path(settings.frontend_out_dir)

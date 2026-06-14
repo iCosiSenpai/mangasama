@@ -545,6 +545,20 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
 
 ---
 
+- **2026-06-14 — Version control + Auth:**
+  - **Git initialized** and pushed to a **private** GitHub repo
+    `iCosiSenpai/mangasama` (branch `main`). `.gitignore` extended (`dev_data/`, `dev_config/`);
+    verified no `.env`/`*.db`/`app/web`/`node_modules` committed. (Local git identity set in-repo.)
+  - **Auth implemented** (was: flags only, unenforced): optional single-admin **HTTP Basic** gate
+    — `app/core/auth.py` + a middleware in `app/main.py` guarding `/api` and `/opds` when
+    `AUTH_ENABLED=true` (`/api/health` + SPA static stay public; `401` + `WWW-Authenticate`).
+    Frontend: `stores/auth.ts`, a 401→login interceptor, `LoginView.vue` + `/login`. Tests:
+    `tests/test_auth.py` (6). Suite **212 passed**; frontend type-check + build clean.
+  - Remaining: Docker (Step 16, on the NAS), Cloudflare handler, library-from-UI, SQLite backup,
+    `series_external_ids` per-library.
+
+---
+
 ## 10. Out-of-plan work (future requests, not in the 17 steps)
 
 Track here anything the user asks for that wasn't in the original plan.
