@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSeriesStore } from '@/stores/series'
 import SeriesCard from '@/components/SeriesCard.vue'
@@ -21,10 +22,10 @@ async function deleteLibrary(): Promise<void> {
   if (!window.confirm('Eliminare questa libreria? (i file su disco restano)')) return
   try {
     await libraries.remove(libraryId.value)
+    toast.success('Libreria eliminata')
     await router.push('/')
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('delete library failed', e)
+  } catch {
+    toast.error('Eliminazione libreria fallita')
   }
 }
 
@@ -56,10 +57,10 @@ watch(libraryId, async (id) => {
   }
 })
 
-function onAdded(payload: { seriesId: number; title: string }): void {
+function onAdded(): void {
   dialogOpen.value = false
-  // eslint-disable-next-line no-console
-  console.info(`added series id=${payload.seriesId} "${payload.title}"`)
+  // The SearchDialog already toasts the add; reload the list to show it.
+  if (libraryId.value != null) void series.load(libraryId.value, true)
 }
 </script>
 

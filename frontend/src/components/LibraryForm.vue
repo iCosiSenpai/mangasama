@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { Loader2, X } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSettingsStore } from '@/stores/settings'
 import type { LibraryFolderStrategy, LibraryRead, LibraryType } from '@/types/api'
@@ -109,6 +110,7 @@ async function submit(): Promise<void> {
     const saved = props.library
       ? await libraries.update(props.library.id, payload)
       : await libraries.create(payload)
+    toast.success(props.library ? 'Libreria aggiornata' : 'Libreria creata')
     emit('saved', saved.id)
   } catch (e) {
     const payload = e as { detail?: string }

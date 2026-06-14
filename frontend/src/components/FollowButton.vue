@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Heart } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useSeriesStore } from '@/stores/series'
 
 const props = defineProps<{
@@ -10,12 +11,12 @@ const props = defineProps<{
 const store = useSeriesStore()
 
 async function toggle(): Promise<void> {
+  const next = !props.followed
   try {
-    await store.setFollowed(props.seriesId, !props.followed)
-  } catch (e) {
-    // Surface as a console error for now; toast lands in step 14.
-    // eslint-disable-next-line no-console
-    console.error('follow toggle failed', e)
+    await store.setFollowed(props.seriesId, next)
+    toast.success(next ? 'Serie seguita' : 'Non più seguita')
+  } catch {
+    toast.error('Operazione follow fallita')
   }
 }
 </script>

@@ -581,6 +581,13 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
 
 ---
 
+- **2026-06-14 — UI toasts (vue-sonner):**
+  - Added `vue-sonner` (dep), mounted `<Toaster>` in `App.vue`, replaced the `console.error/info`
+    placeholders with `toast.success/error` across follow/add/backfill/metadata/library-CRUD/backup.
+    type-check + build clean (sonner CSS bundled). Frontend-only; backend untouched (217 tests).
+
+---
+
 ## 10. Out-of-plan work (future requests, not in the 17 steps)
 
 Track here anything the user asks for that wasn't in the original plan.

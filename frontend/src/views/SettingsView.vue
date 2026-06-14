@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Database, RefreshCw } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useSettingsStore } from '@/stores/settings'
 
 const store = useSettingsStore()
@@ -14,8 +15,10 @@ async function doBackup(): Promise<void> {
   try {
     const res = await store.runBackup()
     backupMsg.value = `Backup creato: ${res.created} (${res.total_backups} totali)`
+    toast.success('Backup creato')
   } catch {
     backupMsg.value = 'Backup fallito'
+    toast.error('Backup fallito')
   } finally {
     backingUp.value = false
   }

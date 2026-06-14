@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { Loader2, Plus, Search, X } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSearchStore } from '@/stores/search'
 import { useSeriesStore } from '@/stores/series'
@@ -79,13 +80,13 @@ async function addCandidate(
       externalId,
       runMetadataRefresh: true,
     })) as unknown as { id: number; title: string }
+    toast.success(`Aggiunta: ${created.title ?? title}`)
     emit('added', {
       seriesId: created.id ?? 0,
       title: created.title ?? title,
     })
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('add series failed', e)
+  } catch {
+    toast.error('Aggiunta serie fallita')
   }
 }
 

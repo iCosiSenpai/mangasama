@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Download, Heart, RefreshCw } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useSeriesDetailStore } from '@/stores/seriesDetail'
 import ChapterList from '@/components/ChapterList.vue'
 
@@ -43,21 +44,32 @@ watch(seriesId, (id) => {
 
 async function onFollow(): Promise<void> {
   if (!store.current) return
+  const next = !store.current.followed
   try {
-    await store.toggleFollow(store.current.id, !store.current.followed)
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('follow toggle failed', e)
+    await store.toggleFollow(store.current.id, next)
+    toast.success(next ? 'Serie seguita' : 'Non più seguita')
+  } catch {
+    toast.error('Operazione follow fallita')
   }
 }
 
 async function onBackfill(): Promise<void> {
   if (seriesId.value == null) return
   try {
-    await store.backfill(seriesId.value, backfillCount.value)
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.error('backfill failed', e)
+    const scheduled = await store.backfill(seriesId.value, backfillCount.value)
+    toast.success(`Backfill avviato: ${scheduled} capitoli in coda`)
+  } catch {
+    toast.error('Backfill fallito')
+  }
+}
+
+async function onRefreshMetadata(): Promise<void> {
+  if (!store.current) return
+  try {
+    await store.refreshMetadata(store.current.id)
+    toast.success('Metadati aggiornati')
+  } catch {
+    toast.error('Refresh metadati fallito')
   }
 }
 </script>
@@ -113,7 +125,7 @@ async function onBackfill(): Promise<void> {
             type="button"
             class="btn"
             :disabled="store.refreshing"
-            @click="store.refreshMetadata(store.current.id)"
+            @click="onRefreshMetadata"
           >
             <RefreshCw class="size-4" :class="{ 'animate-spin': store.refreshing }" />
             Metadati
