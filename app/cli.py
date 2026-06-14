@@ -13,7 +13,6 @@ import argparse
 import asyncio
 import json
 import sys
-from typing import Any
 
 import structlog
 
@@ -51,9 +50,9 @@ async def _cmd_scrape_test(args: argparse.Namespace) -> int:
 
     Usage: `python -m app.cli scrape-test mangadex "death note"`
     """
-    from app.core.http_client import get_http, start_http, stop_http
-    from app.scrapers.registry import get_scraper
+    from app.core.http_client import start_http, stop_http
     from app.scrapers.base import SeriesNotFound
+    from app.scrapers.registry import get_scraper
 
     try:
         await start_http()
@@ -121,11 +120,10 @@ async def _cmd_metadata(args: argparse.Namespace) -> int:
 
     Usage: `python -m app.cli metadata "naruto"`
     """
-    from app.core.http_client import start_http, stop_http
+    from app.core.http_client import get_http, start_http, stop_http
     from app.metadata.anilist import AniListProvider
     from app.metadata.mangadex import MangaDexMetadataProvider
     from app.metadata.merger import MetadataMerger
-    from app.core.http_client import get_http
 
     try:
         await start_http()
@@ -198,16 +196,16 @@ async def _cmd_library_list(_: argparse.Namespace) -> int:
         if not libs:
             print("(no libraries)")
             return 0
-        for l in libs:
+        for lib in libs:
             # Use a count query to avoid the lazy-load `lib.series`
             # trip, which dies with `MissingGreenlet` because the
             # session's IO machinery isn't in a greenlet context.
             from app.services.library import _count_active_series
-            count = await _count_active_series(session, l.id)
-            providers = ",".join(l.providers or []) or "-"
+            count = await _count_active_series(session, lib.id)
+            providers = ",".join(lib.providers or []) or "-"
             print(
-                f"  id={l.id} name={l.name!r} type={l.type} "
-                f"root={l.root_path} providers={providers} series={count}"
+                f"  id={lib.id} name={lib.name!r} type={lib.type} "
+                f"root={lib.root_path} providers={providers} series={count}"
             )
     return 0
 

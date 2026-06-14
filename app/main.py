@@ -22,9 +22,9 @@ Lifespan order:
 from __future__ import annotations
 
 import time
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,7 +33,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.logging_config import configure_logging, get_logger
-from app.settings import Settings, get_settings
+from app.settings import get_settings
 
 logger = get_logger("mangasama.main")
 

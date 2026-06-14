@@ -14,7 +14,6 @@ import httpx
 import pytest
 import respx
 
-from app.core.http_client import get_http
 from app.metadata.cover_cache import (
     _covers_dir,
     cached_path,

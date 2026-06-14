@@ -30,13 +30,13 @@ from app.core.exceptions import (
 ContentType = Literal["manga", "manhua", "manhwa"]
 
 __all__ = [
+    "BaseScraper",
+    "ChapterNotFound",
     "ContentType",
-    "ScrapedSeries",
     "ScrapedChapter",
     "ScrapedPage",
-    "BaseScraper",
+    "ScrapedSeries",
     "SeriesNotFound",
-    "ChapterNotFound",
     "SourceUnavailable",
 ]
 
@@ -167,4 +167,4 @@ class BaseScraper(ABC):
         """Extract the registrable domain for the rate-limiter bucket."""
         from urllib.parse import urlparse
         host = urlparse(self.base_url).hostname or ""
-        return host.lstrip("www.") or self.base_url
+        return host.removeprefix("www.") or self.base_url

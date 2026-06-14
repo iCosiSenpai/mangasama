@@ -13,7 +13,7 @@ The actual page download + CBZ packaging happens in
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from sqlalchemy import select
@@ -31,7 +31,7 @@ logger = structlog.get_logger("mangasama.services.follow")
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 async def _load_series(session: AsyncSession, series_id: int) -> Series:
@@ -215,7 +215,7 @@ async def check_due_series(session: AsyncSession) -> dict:
         interval = timedelta(hours=library.follow_interval_hours or 24)
         last = series.last_checked_at
         if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
+            last = last.replace(tzinfo=UTC)
         if last + interval <= now:
             due_ids.append(series.id)
 

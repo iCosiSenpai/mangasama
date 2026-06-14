@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
@@ -54,7 +54,7 @@ def create_backup() -> Path:
     if not src.exists():
         raise ValueError(f"no database to back up at {src}")
     dest_dir = get_settings().backups_dir  # property mkdirs it
-    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     dest = dest_dir / f"mangasama-{ts}.db"
 
     src_con = sqlite3.connect(str(src))

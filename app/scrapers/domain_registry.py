@@ -14,7 +14,7 @@ class reads it.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -88,6 +88,7 @@ class DomainRegistry:
 
         # Lazy import to avoid loading the DB at module import.
         from sqlalchemy import select
+
         from app.db.session import session_scope
         from app.models import DomainHealth
 
@@ -112,7 +113,7 @@ class DomainRegistry:
             return primary
 
         candidates.sort(
-            key=lambda r: (not r.healthy, r.fail_count, r.last_fail or datetime.min.replace(tzinfo=timezone.utc))
+            key=lambda r: (not r.healthy, r.fail_count, r.last_fail or datetime.min.replace(tzinfo=UTC))
         )
         return candidates[0].domain
 
@@ -134,13 +135,14 @@ class DomainRegistry:
         success: bool,
         status_code: int | None = None,
     ) -> None:
+        from datetime import datetime
+
         from sqlalchemy import select
-        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
         from app.db.session import session_scope
         from app.models import DomainHealth
-        from datetime import datetime, timezone
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         async with session_scope() as session:
             # Read current state.
             stmt = select(DomainHealth).where(

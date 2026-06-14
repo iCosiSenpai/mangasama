@@ -13,9 +13,10 @@ Operations:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
-from typing import Iterable
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
+import structlog
 from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -23,7 +24,6 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import (
     LibraryNotFound,
     SeriesNotFoundDB,
-    SourceUnavailable,
 )
 from app.core.http_client import get_http
 from app.metadata import (
@@ -42,10 +42,8 @@ from app.models.orm import (
     SeriesExternalId,
     SeriesGenre,
     SeriesTag,
-    Volume,
 )
 from app.schemas.series import (
-    SeriesCreate,
     SeriesMetadataRefreshResult,
     SeriesRead,
     SeriesUpdate,
@@ -53,8 +51,6 @@ from app.schemas.series import (
 from app.scrapers.base import SeriesNotFound as SeriesNotFoundScraper
 from app.scrapers.registry import get_scraper
 from app.settings import get_settings
-
-import structlog
 
 logger = structlog.get_logger("mangasama.services.series")
 
@@ -377,12 +373,12 @@ async def add_series_from_provider(
                 provider=provider,
                 external_id=external_id,
                 url=scraped.url,
-                fetched_at=datetime.now(timezone.utc),
+                fetched_at=datetime.now(UTC),
             ))
         else:
             existing_eid.external_id = external_id
             existing_eid.url = scraped.url
-            existing_eid.fetched_at = datetime.now(timezone.utc)
+            existing_eid.fetched_at = datetime.now(UTC)
     return series
 
 
@@ -412,7 +408,7 @@ async def update_series(
     if patch.followed is not None:
         s.followed = patch.followed
         if patch.followed:
-            s.followed_at = datetime.now(timezone.utc)
+            s.followed_at = datetime.now(UTC)
     return s
 
 
@@ -429,7 +425,7 @@ async def set_followed(
 ) -> Series:
     s = await get_series(session, series_id)
     s.followed = followed
-    s.followed_at = datetime.now(timezone.utc) if followed else None
+    s.followed_at = datetime.now(UTC) if followed else None
     return s
 
 
@@ -549,13 +545,13 @@ async def backfill_chapters(
 
 
 __all__ = [
-    "to_series_read",
-    "list_series",
-    "get_series",
     "add_series_from_provider",
-    "update_series",
-    "soft_delete_series",
-    "set_followed",
-    "refresh_metadata",
     "backfill_chapters",
+    "get_series",
+    "list_series",
+    "refresh_metadata",
+    "set_followed",
+    "soft_delete_series",
+    "to_series_read",
+    "update_series",
 ]

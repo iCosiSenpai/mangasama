@@ -45,6 +45,7 @@ def _to_read(lib, series_count: int) -> LibraryRead:
 async def _count_series(session, library_id: int) -> int:
     """Return the number of non-deleted series in `library_id`."""
     from sqlalchemy import func, select
+
     from app.models.orm import Series
     stmt = select(func.count(Series.id)).where(
         Series.library_id == library_id, Series.deleted.is_(False),

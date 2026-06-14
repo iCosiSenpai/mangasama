@@ -96,7 +96,7 @@ class AniListProvider(BaseMetadataProvider):
         except SourceUnavailable as e:
             logger.warning("anilist.gql_failed", error=str(e))
             raise
-        if "errors" in data and data["errors"]:
+        if data.get("errors"):
             # AniList uses errors[] for not-found too.
             logger.info("anilist.errors", errors=data["errors"])
         return data or {}

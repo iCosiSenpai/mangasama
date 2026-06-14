@@ -18,9 +18,7 @@ Key functions:
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
-from collections.abc import Iterable
 from pathlib import Path
 
 import structlog

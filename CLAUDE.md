@@ -1,88 +1,99 @@
 # CLAUDE.md — MangaSama AI assistant instructions
 
-> **READ THIS FILE FIRST** whenever you start a new Claude Code session on
-> the MangaSama project. The detailed roadmap is in `ROADMAP.md`.
+> Read this first when starting a session on MangaSama. For deep detail see
+> `README.md`, `docs/`, and the history log in `ROADMAP.md` §9.
 
 ## What this project is
 
-**MangaSama** is a Docker-based, Italian-first manga downloader with a
-follow/like scheduler, multi-source scrapers, CBZ+ComicInfo output, OPDS 1.2
-catalog, and a Vue 3 UI. Built from scratch in Python 3.12 + FastAPI + SQLite,
-single Docker container, no Lua, no komf.
+**MangaSama** is a Docker-based, **Italian-first** manga downloader: follow series and have
+new chapters auto-downloaded as **CBZ + ComicInfo.xml v2.1**, multi-source scrapers, an
+**OPDS 1.2** catalog for e-readers, and a **Vue 3** UI. Backend: Python 3.12 + FastAPI +
+SQLAlchemy 2.0 + SQLite (one process, one DB). No Lua, no komf.
 
-**Project root**: `F:\dev\mangadownloader` (Windows).
+**Status: feature-complete.** Build steps 1–17 done, plus optional auth, SQLite backups, and
+GitHub Actions CI. The repo is on GitHub at `iCosiSenpai/mangasama` (private). A typical task now
+is **deployment, maintenance, or a small enhancement** — not "the next build step".
 
-## Mandatory session-start procedure
-
-1. **Read `ROADMAP.md`** in full. It's the executive view: what's done,
-   what's next, conventions, the file map, the run-the-project cheat sheet,
-   the step-by-step checklist.
-2. **Read the full plan** at
-   `.claude/plans/g-dev-mangadownloader-voglio-creare-floating-hartmanis.md`
-   for architectural detail when ROADMAP.md points you to it.
-3. **Identify the next step** as the first `[ ]` (or `[~]`) item in
-   ROADMAP.md §1.
-4. **Run the smoke test** to confirm the project is healthy:
-   ```
-   & "C:\Users\cosia\AppData\Local\Programs\Python\Python312\python.exe" -m pytest tests/test_smoke.py -v
-   ```
-5. **State the plan** for the next step in plain text before writing any code.
-6. **Update the ROADMAP.md checklist** (`[ ]` → `[~]` → `[x]`) as the work
-   progresses. Append to §9 (open issues) and §10 (out-of-plan work) as needed.
-
-## Hard rules — never break these
-
-These are the project's **architectural invariants** (also in ROADMAP.md §3):
-
-1. **No Lua anywhere.** All scrapers are pure Python (`httpx` + `parsel` + `lxml`).
-2. **No komf in the stack.** Metadata is our own: `AniListProvider` +
-   `MangaDexProvider` + dormant `GoogleBooksProvider`. Do not add a `komf`
-   container to the compose or call its API.
-3. **Single Docker container.** No multi-service compose unless explicitly
-   added later. `/data` and `/config` are the only persistent volumes.
-4. **Italian-first.** For any series with both `it` and `en` translations,
-   `it` wins. `library.italian_priority` is a hard default.
-5. **Idempotency by `(source_provider, source_id, language)`.** A chapter
-   downloaded twice is the same DB row. The DB unique constraint enforces this.
-6. **ComicInfo.xml v2.1 is mandatory in every CBZ.** Use `ComicInfoBuilder`.
-7. **Zero-padded page names** (`page001.jpg`, …) with width
-   `max(3, len(str(pages_count)))`.
-8. **Deterministic ZIPs**: every entry timestamped `(1980, 1, 1, 0, 0, 0)`.
-9. **Domain registry over hardcoded URLs.** Edit `config/sources.yaml`,
-   not code.
-10. **Content types v1**: `manga | manhua | manhwa` only. Reject
-    `novel | comic | webtoon` at the API boundary with a 400.
-11. **The 12-table schema is fixed.** Adding columns is fine; splitting
-    tables needs a discussion.
-12. **App name is MangaSama** (Italian, not English "MangaDownloader").
-    Project name: `mangasama`. Docker image: `mangasama/mangasama`.
-
-## Where things live
-
-See **ROADMAP.md §2** for the project tree and **§4** for the critical file
-map. Don't load every file; load only the ones the next step needs (the
-file map names them).
-
-## Python environment
-
-Use the system Python directly (Windows PATH is not set up cleanly here):
+## Layout (where things live)
 
 ```
-& "C:\Users\cosia\AppData\Local\Programs\Python\Python312\python.exe" -m pip install -e ".[dev]"
-& "C:\Users\cosia\AppData\Local\Programs\Python\Python312\python.exe" -m pytest -v
-& "C:\Users\cosia\AppData\Local\Programs\Python\Python312\python.exe" -m alembic upgrade head
-& "C:\Users\cosia\AppData\Local\Programs\Python\Python312\python.exe" -m uvicorn app.main:app --reload
-& "C:\Users\cosia\AppData\Local\Programs\Python\Python312\python.exe" -m app.cli <command>
+app/        FastAPI backend
+  api/        routers (libraries, series, chapters, search, follow, jobs, settings, covers, opds)
+  core/       http client, rate limiter, paths, hashing, auth, exceptions
+  db/         engine/session/init (SQLite WAL)
+  models/     SQLAlchemy ORM (12 tables, app/models/orm.py)
+  schemas/    Pydantic v2 DTOs
+  scrapers/   BaseScraper + MangaDex, MangaWorld (+ domain_registry, cookies)
+  metadata/   AniList + MangaDex (+ dormant GoogleBooks) + MetadataMerger + cover cache
+  services/   downloader, follow, cbz, comicinfo, folder_strategy, language_picker,
+              health, backup, opds, library, series, chapter, job_events, settings_api
+  scheduler/  APScheduler jobs (follow_check, domain_health, cleanup, backup)
+frontend/   Vue 3 + Vite + Tailwind + Pinia (built into app/web/, gitignored)
+config/     default.yaml, sources.yaml, logging.yaml
+migrations/ Alembic (alembic upgrade head on boot via docker/entrypoint.sh)
+docs/       architecture.md, api.md, sources.md, comicinfo.md
+docker/     Dockerfile (multi-stage) + entrypoint.sh ; docker-compose.yml at the root
 ```
 
-## When something is unclear
+## Run it
 
-- **First**, check ROADMAP.md (this session's source of truth).
-- **Then**, check the full plan at `.claude/plans/g-dev-mangadownloader-voglio-creare-floating-hartmanis.md`.
-- **Then**, read the relevant existing code before writing new code.
-- **Only then** ask the user.
+```bash
+# Backend (dev)
+pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload          # http://localhost:8000
 
-## When the user requests something outside the plan
+# Frontend (dev)
+cd frontend && npm install && npm run build   # builds the SPA into app/web/
+#   or `npm run dev` (proxies /api + /opds to :8000)
 
-Add it to **ROADMAP.md §10** ("Out-of-plan work") and flag it explicitly
-before implementing. Don't silently expand scope.
+# Tests / lint
+pytest -q                              # backend (mock-based, no network)
+ruff check app tests                   # must stay clean (CI gate)
+cd frontend && npm run type-check && npm run test && npm run build
+
+# Docker (prod / NAS) — see README "Deploy" + docker-compose.yml
+docker compose up -d
+```
+
+> Note: the original dev box was Windows where `python` pointed at the Store stub, so commands
+> were run as `& "C:\Users\…\Python312\python.exe" -m <cmd>`. On Linux/NAS/CI just use `python`,
+> `pytest`, `uvicorn`, `npm`, `docker` directly.
+
+## Deployment (NAS / self-host)
+
+Single container, two persistent volumes (`/data` for the DB + library files, `/config` for
+YAML/cookies/backups). `docker compose up -d` builds the image (frontend + backend), runs
+migrations via the entrypoint, and serves the SPA + API + OPDS on `:8000`. See `README.md`
+(Quickstart / Deploy) and `docs/architecture.md`. Optional env: `AUTH_ENABLED` + `ADMIN_PASSWORD`
+(HTTP Basic gate), `BACKUP_ENABLED` (daily SQLite backup), `CLOUDFLARE_SOLVER`.
+
+## Hard rules — architectural invariants (never break)
+
+1. **No Lua, no komf.** Scrapers are pure Python (`httpx` + `parsel`/`lxml`); metadata is our own.
+2. **Single container.** `/data` + `/config` are the only persistent volumes.
+3. **Italian-first.** For a chapter available in both `it` and `en`, `it` wins (one CBZ per number).
+4. **Idempotency** by `(source_provider, source_id, language)` — enforced by a DB unique constraint.
+5. **ComicInfo.xml v2.1** in every CBZ — only via `ComicInfoBuilder` (`app/services/comicinfo.py`).
+6. **Deterministic ZIPs**: every entry timestamped `(1980,1,1,0,0,0)`; zero-padded page names.
+7. **Domain registry over hardcoded URLs** — edit `config/sources.yaml`, not code.
+8. **Content types v1**: `manga | manhua | manhwa` only (reject others at the API boundary with 400).
+9. **12-table schema is fixed.** Adding columns is fine; splitting/altering tables needs discussion.
+10. **App name is MangaSama**; Docker image `mangasama/mangasama`.
+
+## Conventions
+
+- Python: ruff (line 110, py312); `ruff check app tests` is a CI gate — keep it clean.
+  Async everywhere in the request path (`httpx.AsyncClient`, `aiosqlite`). structlog for logging.
+  Domain exceptions in `app/core/exceptions.py` → mapped to JSON by `app/api/exception_handlers.py`.
+- DB: Alembic migrations (never edit a merged migration); `DateTime(timezone=True)` UTC.
+- Frontend: TS strict, Composition API `<script setup>`, Pinia stores, axios via `api/client.ts`,
+  lucide icons, vue-sonner toasts. Tests with vitest (`*.spec.ts`).
+- Git: small commits, leave the tree runnable; CI (`.github/workflows/ci.yml`) runs pytest +
+  frontend type-check/test/build on every push.
+
+## Known open items (optional)
+
+Cloudflare solver dispatch (CF sources currently just fail over); `series_external_ids` is globally
+unique on `(provider, external_id)` so the same source series can't yet live in two libraries.
+See `ROADMAP.md` §9 for the full history and `CHANGELOG.md` for the release summary.

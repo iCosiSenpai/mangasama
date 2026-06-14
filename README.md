@@ -30,6 +30,19 @@ open http://localhost:8000
 
 That's it. The first start runs Alembic migrations automatically and creates the SQLite DB at `/data/mangasama.db`. Open the UI, create a library, search for a series, click **Follow**.
 
+### Deploy on a NAS / self-host
+
+Copy (or `git clone`) the repo onto the host and run `docker compose up -d` — the multi-stage
+build compiles the Vue SPA and the Python backend into one image, runs migrations on boot, and
+serves the UI + API + OPDS on `:8000`. Two volumes persist your data:
+
+- **`/data`** — SQLite DB and the downloaded library folders (point libraries' `root_path` here, e.g. `/data/manga_it`).
+- **`/config`** — YAML config, cookie cache, and backups.
+
+Useful env (in `.env`): `AUTH_ENABLED=true` + `ADMIN_PASSWORD=…` (HTTP Basic gate over the API/OPDS),
+`BACKUP_ENABLED=true` (daily WAL-safe SQLite backup to `/config/backups`), `CLOUDFLARE_SOLVER`.
+The container exposes a `HEALTHCHECK` on `GET /api/health`. See [docs/architecture.md](docs/architecture.md).
+
 ## Quickstart (local dev)
 
 ```bash

@@ -88,4 +88,4 @@ async def check_all_domains(*, client: httpx.AsyncClient | None = None) -> dict:
     return {"checked": checked, "healthy": healthy, "failed": failed}
 
 
-__all__ = ["check_all_domains", "make_health_client", "HEALTH_TIMEOUT"]
+__all__ = ["HEALTH_TIMEOUT", "check_all_domains", "make_health_client"]

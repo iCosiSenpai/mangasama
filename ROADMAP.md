@@ -623,4 +623,9 @@ Track here anything the user asks for that wasn't in the original plan.
 
 ---
 
-*Last updated: end of step 2 (Alembic migrations). 7/7 tests green, alembic upgrade head verified live, 12 tables + 12 indexes + 8 seeded domains.*
+*Last updated: 2026-06-14 — feature-complete. Build steps 1–17 done, plus optional HTTP Basic
+auth, SQLite backups, library management from the UI, toasts, and GitHub Actions CI (pytest +
+frontend type-check/test/build, green). 217 backend tests + 10 frontend unit tests; `ruff check
+app tests` clean. On GitHub at `iCosiSenpai/mangasama` (private). Remaining: Docker build/run
+verified on the NAS at deploy time, Cloudflare solver, `series_external_ids` per-library.
+See §9 for the full history.*

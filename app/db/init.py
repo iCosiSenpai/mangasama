@@ -8,11 +8,8 @@ on every startup so the YAML stays the source of truth.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 import structlog
 import yaml
-from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -58,7 +55,6 @@ async def _reseed_domain_health() -> None:
     sources: dict = data.get("sources") or {}
 
     rows: list[dict] = []
-    now = datetime.now(timezone.utc)
     for name, cfg in sources.items():
         if not cfg.get("enabled", True):
             continue

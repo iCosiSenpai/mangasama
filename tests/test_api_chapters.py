@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from pathlib import Path
-
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import insert
 
 from app.db.session import session_scope
 from app.main import create_app

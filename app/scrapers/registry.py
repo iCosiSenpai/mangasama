@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
-from typing import Any
 
 import structlog
 

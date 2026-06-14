@@ -19,7 +19,6 @@ from app.services.images import (
     is_jpeg,
 )
 
-
 # ----------------------------------------------------------------- helpers
 
 

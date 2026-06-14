@@ -75,7 +75,18 @@ extend-exclude = ["app/web", "frontend", "migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "RUF", "ASYNC", "TCH"]
-ignore = ["E501", "B008", "B905"]
+ignore = [
+    "E501",   # line length (handled by editor)
+    "B008",   # function call in default arg (FastAPI Depends/Query idiom)
+    "B905",   # zip strict=
+    # --- deliberate project choices ---
+    "TC001",  # typing-only first-party import: keep direct imports — Pydantic/SQLAlchemy
+    "TC002",  # typing-only third-party import:  resolve annotations at runtime, and the
+    "TC003",  # typing-only stdlib import:        repo convention is plain imports, not TYPE_CHECKING
+    "N818",   # exception names without "Error" suffix are intentional (SeriesNotFound, RateLimited, …)
+    "ASYNC240",  # cheap Path.stat/exists in async fns — not worth a thread offload
+    "RUF012",  # mutable class defaults are fine for our ORM/dataclass attrs
+]
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/*" = ["E", "F"]

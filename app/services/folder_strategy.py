@@ -24,9 +24,10 @@ declare it in the `Library` model / `LIBRARY_FOLDER_STRATEGIES` constant.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from app.core.paths import chapter_filename, ensure_dir, safe_filename, volume_folder_name
 

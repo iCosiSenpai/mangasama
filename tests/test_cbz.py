@@ -16,8 +16,7 @@ import pytest
 from PIL import Image
 
 from app.services.cbz import CbzPackager, PageBlob
-from app.services.comicinfo import ComicInfo, ComicPageInfo
-
+from app.services.comicinfo import ComicInfo
 
 # ----------------------------------------------------------- helpers
 

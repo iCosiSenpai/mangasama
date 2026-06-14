@@ -26,10 +26,10 @@ from __future__ import annotations
 import os
 import time
 import zipfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable, Sequence
 from zipfile import ZIP_DEFLATED, ZIP_STORED
 
 import structlog

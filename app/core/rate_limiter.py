@@ -11,8 +11,8 @@ The async version is `AsyncLimiter(max_rate, time_period)` where
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import structlog
 from aiolimiter import AsyncLimiter

@@ -10,6 +10,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import __version__
 from app.models.orm import DomainHealth
 from app.schemas.settings_api import (
     EffectiveSettings,
@@ -18,7 +19,6 @@ from app.schemas.settings_api import (
 )
 from app.scrapers.registry import get_scraper_registry
 from app.settings import Settings, get_settings
-from app import __version__
 
 logger = structlog.get_logger("mangasama.services.settings")
 

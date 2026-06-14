@@ -6,9 +6,6 @@ the merged result. No HTTP, no DB.
 
 from __future__ import annotations
 
-import pytest
-
-from app.metadata.anilist import AniListProvider
 from app.metadata.base import MetadataAuthor, MetadataRecord
 from app.metadata.merger import MergedMetadata, MetadataMerger
 

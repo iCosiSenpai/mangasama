@@ -13,8 +13,7 @@ Tables: 12.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
-from typing import Optional
+from datetime import UTC, date, datetime
 
 from sqlalchemy import (
     JSON,
@@ -37,7 +36,7 @@ from app.db.base import Base
 
 def _utcnow() -> datetime:
     """UTC now — single source of truth for timestamp defaults."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 # ----------------------------------------------------------------------------
@@ -79,7 +78,7 @@ class Library(Base):
     )
 
     # Relationships
-    series: Mapped[list["Series"]] = relationship(
+    series: Mapped[list[Series]] = relationship(
         back_populates="library", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -102,23 +101,23 @@ class Series(Base):
     )
 
     title: Mapped[str] = mapped_column(String(500), nullable=False)
-    sort_title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    sort_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
     alt_titles: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
-    status: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # ongoing|completed|hiatus|cancelled|unknown
-    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)  # BCP-47
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    language: Mapped[str | None] = mapped_column(String(8), nullable=True)  # BCP-47
 
-    cover_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    cover_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
 
     # Overrides library.providers for this series.
     source_priority: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
     followed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    followed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    followed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
@@ -129,19 +128,19 @@ class Series(Base):
 
     # Relationships
     library: Mapped[Library] = relationship(back_populates="series")
-    external_ids: Mapped[list["SeriesExternalId"]] = relationship(
+    external_ids: Mapped[list[SeriesExternalId]] = relationship(
         back_populates="series", cascade="all, delete-orphan", passive_deletes=True
     )
-    genres: Mapped[list["SeriesGenre"]] = relationship(
+    genres: Mapped[list[SeriesGenre]] = relationship(
         back_populates="series", cascade="all, delete-orphan", passive_deletes=True
     )
-    tags: Mapped[list["SeriesTag"]] = relationship(
+    tags: Mapped[list[SeriesTag]] = relationship(
         back_populates="series", cascade="all, delete-orphan", passive_deletes=True
     )
-    authors: Mapped[list["SeriesAuthor"]] = relationship(
+    authors: Mapped[list[SeriesAuthor]] = relationship(
         back_populates="series", cascade="all, delete-orphan", passive_deletes=True
     )
-    volumes: Mapped[list["Volume"]] = relationship(
+    volumes: Mapped[list[Volume]] = relationship(
         back_populates="series", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -167,8 +166,8 @@ class SeriesExternalId(Base):
     )
     provider: Mapped[str] = mapped_column(String(32), primary_key=True)
     external_id: Mapped[str] = mapped_column(String(256), nullable=False)
-    url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
-    fetched_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     series: Mapped[Series] = relationship(back_populates="external_ids")
 
@@ -233,14 +232,14 @@ class Volume(Base):
 
     number: Mapped[str] = mapped_column(String(16), nullable=False)  # "1", "1.5", "0"
     sort: Mapped[float] = mapped_column(Float, nullable=False)
-    name: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    cover_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
-    release_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    language: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
-    publisher: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    cover_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    language: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    publisher: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     series: Mapped[Series] = relationship(back_populates="volumes")
-    chapters: Mapped[list["Chapter"]] = relationship(
+    chapters: Mapped[list[Chapter]] = relationship(
         back_populates="volume", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -266,26 +265,26 @@ class Chapter(Base):
 
     number: Mapped[str] = mapped_column(String(16), nullable=False)
     sort: Mapped[float] = mapped_column(Float, nullable=False)
-    title: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    title: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    source_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     source_provider: Mapped[str] = mapped_column(String(32), nullable=False)
     source_id: Mapped[str] = mapped_column(String(256), nullable=False)
     language: Mapped[str] = mapped_column(String(8), nullable=False)  # BCP-47
 
-    pages_count: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    file_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
-    cbz_size: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    cbz_sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    downloaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    pages_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    file_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    cbz_size: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    cbz_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    downloaded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    comic_info_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    comic_info_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
 
     # Relationships
     volume: Mapped[Volume] = relationship(back_populates="chapters")
-    pages: Mapped[list["Page"]] = relationship(
+    pages: Mapped[list[Page]] = relationship(
         back_populates="chapter", cascade="all, delete-orphan", passive_deletes=True
     )
 
@@ -311,10 +310,10 @@ class Page(Base):
 
     index: Mapped[int] = mapped_column(Integer, nullable=False)  # 0-based
     filename: Mapped[str] = mapped_column(String(32), nullable=False)  # page001.jpg
-    source_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
-    width: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    sha256: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     chapter: Mapped[Chapter] = relationship(back_populates="pages")
 
@@ -339,8 +338,8 @@ class FollowLog(Base):
     checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     new_chapters_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     status: Mapped[str] = mapped_column(String(16), nullable=False)  # ok|error|partial
-    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    duration_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     __table_args__ = (Index("ix_follow_log_series_time", "series_id", "checked_at"),)
 
@@ -353,15 +352,15 @@ class ProviderJob(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     job_type: Mapped[str] = mapped_column(String(32), nullable=False)
     # scrape_chapter|scrape_series|download|pack_cbz|metadata_enrich|health_check
-    provider: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(32), nullable=True)
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     # pending|running|done|error
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
     progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    message: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    message: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (
         Index("ix_jobs_status_started", "status", "started_at"),
@@ -380,11 +379,11 @@ class DomainHealth(Base):
     source: Mapped[str] = mapped_column(String(32), primary_key=True)
     domain: Mapped[str] = mapped_column(String(256), primary_key=True)
 
-    last_ok: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_fail: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_ok: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_fail: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fail_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     healthy: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    last_status_code: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
-    notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    last_status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     __table_args__ = (Index("ix_domain_health_source_healthy", "source", "healthy"),)

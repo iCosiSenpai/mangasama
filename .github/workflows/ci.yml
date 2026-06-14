@@ -17,13 +17,10 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check app tests
       - name: Tests
         run: pytest -q
-      # Ruff is not a blocking gate yet (the repo carries some accepted legacy
-      # style nits). Run it as advisory; flip continue-on-error off after a cleanup.
-      - name: Lint (advisory)
-        continue-on-error: true
-        run: ruff check app
 
   frontend:
     name: Frontend (type-check + build)

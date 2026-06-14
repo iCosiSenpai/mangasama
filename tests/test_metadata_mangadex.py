@@ -12,7 +12,6 @@ import pytest
 import respx
 
 from app.core.http_client import get_http
-from app.metadata.base import MetadataAuthor
 from app.metadata.mangadex import MangaDexMetadataProvider
 
 API = "https://api.mangadex.org"

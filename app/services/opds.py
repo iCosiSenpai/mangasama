@@ -9,7 +9,7 @@ Spec: https://specs.opds.io/opds-1.2
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from lxml import etree
 
@@ -35,10 +35,10 @@ ROOT_HREF = "/opds/v1.2/root"
 
 
 def _iso(dt: datetime | None = None) -> str:
-    d = dt or datetime.now(timezone.utc)
+    d = dt or datetime.now(UTC)
     if d.tzinfo is None:
-        d = d.replace(tzinfo=timezone.utc)
-    return d.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        d = d.replace(tzinfo=UTC)
+    return d.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _text(parent: etree._Element, tag: str, text: str) -> etree._Element:

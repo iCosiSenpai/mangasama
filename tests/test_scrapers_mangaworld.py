@@ -12,7 +12,6 @@ import httpx
 import pytest
 import respx
 
-from app.core.exceptions import BlockedByCloudflare
 from app.core.http_client import get_http
 from app.scrapers.mangaworld import MangaWorldScraper
 

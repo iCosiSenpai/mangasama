@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -28,7 +28,7 @@ async def client():
 
 
 async def _seed_jobs() -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     async with session_scope() as s:
         s.add(ProviderJob(job_type="download", provider="mangadex", status="done",
                           progress=100, finished_at=now))

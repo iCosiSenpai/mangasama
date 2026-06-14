@@ -13,8 +13,9 @@ Validation:
 
 from __future__ import annotations
 
+import contextlib
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Sequence
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -24,7 +25,6 @@ from app.core.exceptions import LibraryNotFound
 from app.models.orm import Chapter, Library, Series, Volume
 from app.schemas.library import LibraryCreate, LibraryStats, LibraryUpdate
 from app.scrapers.registry import get_scraper_registry
-
 
 # ----------------------------------------------------------------- helpers
 
@@ -122,15 +122,11 @@ async def create_library(
     session: AsyncSession, payload: LibraryCreate,
 ) -> Library:
     _validate_providers(payload.providers)
-    # Make sure the on-disk root exists; benign for the "user wants to
-    # point at /mnt/nas/manga" case.
-    try:
+    # Make sure the on-disk root exists; benign for the "user wants to point
+    # at /mnt/nas/manga" case. If it can't be created (permission denied, volume
+    # not mounted yet) we don't block row creation.
+    with contextlib.suppress(OSError):
         Path(payload.root_path).mkdir(parents=True, exist_ok=True)
-    except OSError:
-        # If the path can't be created (e.g. permission denied) we let
-        # the request fail at mkdir time but don't block row creation —
-        # the user might be planning to mount the volume later.
-        pass
 
     lib = Library(
         name=payload.name,
@@ -169,10 +165,8 @@ async def update_library(
             continue
         setattr(lib, field_name, value)
     if patch.root_path is not None:
-        try:
+        with contextlib.suppress(OSError):
             Path(patch.root_path).mkdir(parents=True, exist_ok=True)
-        except OSError:
-            pass
     try:
         await session.flush()
     except IntegrityError as e:

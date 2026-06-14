@@ -55,7 +55,7 @@ from __future__ import annotations
 import re
 from datetime import datetime
 from typing import Any
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import urljoin, urlparse
 
 import structlog
 from parsel import Selector
@@ -498,10 +498,7 @@ class MangaWorldScraper(BaseScraper):
             # to the iteration order if the id is missing.
             page_id = img.css("::attr(id)").get() or ""
             m = re.search(r"page-(\d+)", page_id)
-            if m:
-                idx = int(m.group(1))
-            else:
-                idx = len(pages)
+            idx = int(m.group(1)) if m else len(pages)
             src = (img.css("::attr(src)").get()
                    or img.css("::attr(data-src)").get()
                    or img.css("::attr(data-original)").get())

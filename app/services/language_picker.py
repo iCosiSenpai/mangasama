@@ -65,7 +65,7 @@ def select_chapters(
         A new list. Original ordering *within* a language is preserved.
     """
     prio = priority_for(language_priority)
-    allowed = {l.lower() for l in languages} if languages else None
+    allowed = {lang.lower() for lang in languages} if languages else None
 
     out: list[ScrapedChapter] = []
     for ch in chapters:

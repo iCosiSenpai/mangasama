@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -54,7 +54,7 @@ async def _seed(*, with_cover: bool = False, downloaded: bool = True) -> dict:
             source_provider="mangadex", source_id="c1", language="it",
             pages_count=20, cbz_size=12345,
             file_path=("/data/x.cbz" if downloaded else None),
-            downloaded_at=(datetime.now(timezone.utc) if downloaded else None),
+            downloaded_at=(datetime.now(UTC) if downloaded else None),
         )
         s.add(ch)
         await s.flush()

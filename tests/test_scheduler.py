@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import func, select
@@ -56,7 +56,7 @@ async def test_backup_job_registered_only_when_enabled(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_cleanup_deletes_old_provider_jobs():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     async with session_scope() as s:
         s.add(ProviderJob(
             job_type="download", status="done", finished_at=now - timedelta(days=60),

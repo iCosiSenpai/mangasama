@@ -18,11 +18,11 @@ __all__ = [
     "BaseMetadataProvider",
     "Confidence",
     "MangaDexMetadataProvider",
+    "MergedMetadata",
     "MetadataAuthor",
     "MetadataCandidate",
-    "MetadataRecord",
-    "MergedMetadata",
     "MetadataMerger",
+    "MetadataRecord",
     "ProviderName",
     "fetch_and_cache",
 ]

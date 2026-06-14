@@ -7,10 +7,6 @@ re-ordered / filtered output. The chapter dataclass is defined in
 
 from __future__ import annotations
 
-from datetime import datetime
-
-import pytest
-
 from app.scrapers.base import ScrapedChapter
 from app.services.language_picker import (
     DEFAULT_PRIORITY,

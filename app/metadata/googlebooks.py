@@ -11,8 +11,6 @@ registry filters it out via `enabled = settings.google_books_enabled`.
 
 from __future__ import annotations
 
-from typing import Any
-
 import structlog
 
 from app.metadata.base import (

@@ -9,15 +9,13 @@ returns the existing `file_path` if any, else 404.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Sequence
 
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import ChapterNotFoundDB
-from app.models.orm import Chapter, Series, Volume
-
+from app.models.orm import Chapter, Volume
 
 # ----------------------------------------------------------------- read
 
@@ -168,10 +166,10 @@ async def redownload_chapter(
 
 # Export for tests / other services.
 __all__ = [
-    "list_chapters",
-    "get_chapter",
+    "_italian_first_order",
     "delete_chapter",
     "download_chapter_file",
+    "get_chapter",
+    "list_chapters",
     "redownload_chapter",
-    "_italian_first_order",  # noqa: SLF001 — used by tests
 ]

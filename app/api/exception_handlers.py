@@ -39,12 +39,12 @@ async def domain_exception_handler(
             status_code=404,
             content=_payload(str(exc), "library_not_found"),
         )
-    if isinstance(exc, SeriesNotFoundDB) or isinstance(exc, SeriesNotFound):
+    if isinstance(exc, (SeriesNotFoundDB, SeriesNotFound)):
         return JSONResponse(
             status_code=404,
             content=_payload(str(exc), "series_not_found"),
         )
-    if isinstance(exc, ChapterNotFoundDB) or isinstance(exc, ChapterNotFound):
+    if isinstance(exc, (ChapterNotFoundDB, ChapterNotFound)):
         return JSONResponse(
             status_code=404,
             content=_payload(str(exc), "chapter_not_found"),

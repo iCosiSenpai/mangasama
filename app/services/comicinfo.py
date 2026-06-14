@@ -21,10 +21,9 @@ Notes:
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 from xml.etree import ElementTree as ET
-from xml.sax.saxutils import escape
 
 from app.core.paths import _pad
 

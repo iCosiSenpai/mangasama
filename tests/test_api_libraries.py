@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -210,7 +210,7 @@ async def test_library_stats_with_chapters(
             volume_id=vol.id, number="1", sort=1.0, language="it",
             source_provider="mangadex", source_id="a",
             file_path="/data/a.cbz", cbz_size=1000,
-            downloaded_at=datetime.now(timezone.utc),
+            downloaded_at=datetime.now(UTC),
         ))
         s.add(Chapter(
             volume_id=vol.id, number="2", sort=2.0, language="it",

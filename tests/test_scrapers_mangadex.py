@@ -7,14 +7,10 @@ the right dataclasses.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import httpx
 import pytest
 import respx
 
-from app.core.exceptions import SourceUnavailable
 from app.scrapers.mangadex import MangaDexScraper
 
 API = "https://api.mangadex.org"

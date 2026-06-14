@@ -14,7 +14,7 @@ friction). The live `domain_health` cron is intentionally left to step 15.
 from __future__ import annotations
 
 import contextlib
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -62,7 +62,7 @@ async def _run_cleanup() -> None:
     from app.db.session import session_scope
 
     settings = get_settings()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.scheduler_job_retention_days)
+    cutoff = datetime.now(UTC) - timedelta(days=settings.scheduler_job_retention_days)
     async with session_scope() as session:
         res = await session.execute(
             delete(ProviderJob).where(
