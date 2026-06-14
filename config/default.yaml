@@ -1,0 +1,63 @@
+# MangaSama — default runtime configuration.
+# These values are merged with environment variables (env wins). Don't put
+# secrets here — use .env. This file is committed; sources.yaml is also
+# committed; cookies/ and .cache/ are gitignored.
+
+app:
+  name: MangaSama
+  version: 0.1.0
+
+library:
+  default_type: manga
+  default_folder_strategy: series_volume_chapter
+  default_cover_strategy: series_first
+  default_providers:
+    - mangaworld
+    - mangaeden
+    - mangadex
+  default_italian_priority: true
+  default_follow_interval_hours: 24
+  default_jpg_quality: 85
+
+scrapers:
+  defaults:
+    rate_limit_rpm: 30
+    concurrency: 4
+    timeout_seconds: 30
+  per_scraper:
+    mangadex:
+      rate_limit_rpm: 40
+    mangaeden:
+      rate_limit_rpm: 60
+    mangaworld:
+      rate_limit_rpm: 20
+    mangapark:
+      rate_limit_rpm: 20
+      requires_cookie: true
+    bato:
+      rate_limit_rpm: 20
+    mangakakalot:
+      rate_limit_rpm: 30
+    anilist:
+      rate_limit_rpm: 30
+    mangadex_meta:
+      rate_limit_rpm: 40
+
+downloader:
+  worker_count: 3
+  queue_size: 200
+  max_retries: 3
+  retry_backoff_seconds: [1, 5, 25]
+
+scheduler:
+  follow_interval_minutes: 15
+  domain_health_interval_minutes: 15
+  job_retention_days: 30
+
+opds:
+  enabled: true
+  recent_days: 90
+
+logging:
+  level: INFO
+  json_logs: false

@@ -1,0 +1,58 @@
+services:
+  mangasama:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: mangasama/mangasama:0.1.0
+    container_name: mangasama
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - mangasama-data:/data
+      - mangasama-config:/config
+    environment:
+      # Core
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - DATA_DIR=/data
+      - CONFIG_DIR=/config
+      - DB_FILENAME=mangasama.db
+      - DOWNLOADS_DIR=downloads
+      # Anti-bot
+      - CLOUDFLARE_SOLVER=${CLOUDFLARE_SOLVER:-}
+      - FLARESOLVERR_URL=${FLARESOLVERR_URL:-}
+      # Optional scrapers
+      - SCRAPER_MANGAPARK_ENABLED=${SCRAPER_MANGAPARK_ENABLED:-false}
+      - SCRAPER_BATO_ENABLED=${SCRAPER_BATO_ENABLED:-true}
+      - SCRAPER_MANGAKAKALOT_ENABLED=${SCRAPER_MANGAKAKALOT_ENABLED:-true}
+      # Auth (set AUTH_ENABLED=true and ADMIN_PASSWORD in .env to enable)
+      - AUTH_ENABLED=${AUTH_ENABLED:-false}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=5).status == 200 else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Cloudflare bypass sidecar.
+  # Uncomment to use CLOUDFLARE_SOLVER=flaresolverr.
+  # flaresolverr:
+  #   image: ghcr.io/flaresolverr/flaresolverr:latest
+  #   container_name: mangasama-flaresolverr
+  #   restart: unless-stopped
+  #   environment:
+  #     - LOG_LEVEL=info
+  #   ports:
+  #     - "8191:8191"
+
+volumes:
+  mangasama-data:
+    name: mangasama-data
+  mangasama-config:
+    name: mangasama-config

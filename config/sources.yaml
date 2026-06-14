@@ -1,0 +1,95 @@
+# MangaSama — source / domain registry.
+# Italian-first ordering. `primary` is tried first; `alternates` are tried in
+# order if the primary fails 3 consecutive health checks. The cron job in
+# app/scrapers/domain_registry.py keeps the `healthy` flag in sync.
+
+sources:
+  mangaworld:
+    display_name: MangaWorld
+    tier: 1
+    primary: mangaworld.mx
+    alternates:
+      - mangaworldacg.com
+      - mangaworld.io
+    scheme: https
+    base_path: /
+    health_check_path: /
+    selector_check: title
+    requires_browser: false
+    requires_cookie: false
+    enabled: true
+    country: IT
+    content_types: [manga, manhua, manhwa]
+    notes: Italian scanlation aggregator. Domain rotates every few months.
+  mangaeden:
+    display_name: MangaEden
+    tier: 1
+    primary: mangaeden.com
+    alternates: []
+    scheme: https
+    base_path: /it
+    health_check_path: /it/
+    requires_browser: false
+    requires_cookie: false
+    enabled: false   # Domain defunct as of 2026-06; enable if a mirror reappears.
+    country: IT
+    content_types: [manga]
+    notes: Public JSON API. Italian mirror under /it/. Currently offline.
+  mangadex:
+    display_name: MangaDex
+    tier: 1
+    primary: api.mangadex.org
+    alternates: []
+    scheme: https
+    base_path: /
+    health_check_path: /
+    requires_browser: false
+    requires_cookie: false
+    enabled: true
+    content_types: [manga, manhua, manhwa]
+    notes: Multi-language. Italian available as scanlation translations.
+  mangapark:
+    display_name: MangaPark
+    tier: 2
+    primary: mangapark.org
+    alternates:
+      - mangapark.io
+      - mangapark.com
+    scheme: https
+    base_path: /
+    health_check_path: /
+    selector_check: title
+    requires_browser: false
+    requires_cookie: true
+    enabled: false   # Opt-in via SCRAPER_MANGAPARK_ENABLED=true
+    content_types: [manga, manhua, manhwa]
+    notes: JSON POST API at /apo/. Cookie injection recommended.
+  bato:
+    display_name: Bato.to
+    tier: 2
+    primary: bato.to
+    alternates: []
+    scheme: https
+    base_path: /
+    health_check_path: /
+    selector_check: title
+    requires_browser: false
+    requires_cookie: false
+    enabled: true
+    content_types: [manga, manhua, manhwa]
+    notes: Multi-language scanlation community. Cloudflare-fronted.
+  mangakakalot:
+    display_name: MangaKakalot
+    tier: 2
+    primary: mangakakalot.com
+    alternates:
+      - manganato.com
+    scheme: https
+    base_path: /
+    health_check_path: /
+    selector_check: title
+    requires_browser: false
+    requires_cookie: false
+    enabled: true
+    content_types: [manga]
+    notes: English-first fallback. Mirror at manganato.com.
