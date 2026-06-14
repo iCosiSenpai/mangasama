@@ -603,6 +603,23 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
 
 ---
 
+- **2026-06-14 — Ruff cleanup + onboarding + CI hardening:**
+  - `ruff check app tests` is now **clean** and a **blocking** CI gate. Auto-fixed safe rules
+    (UP045/UP017/UP035/UP037/F401/I001/RUF022/RUF019/RUF100); fixed a real bug `base.py`
+    `_domain` used `lstrip("www.")` (strips chars, not the prefix) → `removeprefix`; plus F841,
+    E741, SIM101/105/108. Deliberately ignored `TC001-3` (Pydantic/SQLAlchemy runtime
+    annotations + direct-import convention), `N818` (intentional exception names), `ASYNC240`
+    (cheap `Path.stat`), `RUF012` (ORM/dataclass mutable defaults) — see `pyproject.toml`.
+  - Rewrote `CLAUDE.md` (OS-agnostic, deploy-oriented, removed dead plan-file refs), refreshed
+    the ROADMAP footer, added a README "Deploy on a NAS" section.
+  - **CI npm fix**: `package-lock.json` is lockfileVersion 3 (npm 11); node 20 ships npm 10
+    whose `npm ci` reported it out of sync once vitest pulled a second esbuild → the frontend
+    job now runs `npm install -g npm@11` before `npm ci`. (Note: an earlier "CI green" report was
+    mis-attributed to a previous run; the vitest run had actually failed here — now genuinely
+    green, verified by run id: both jobs `success`.) **Use npm 11 when regenerating the lock.**
+
+---
+
 ## 10. Out-of-plan work (future requests, not in the 17 steps)
 
 Track here anything the user asks for that wasn't in the original plan.
