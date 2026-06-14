@@ -588,6 +588,13 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
 
 ---
 
+- **2026-06-14 — CI (GitHub Actions):**
+  - `.github/workflows/ci.yml` runs on push to `main` + PRs: **backend** job (`pip install -e ".[dev]"`
+    + `pytest`) and **frontend** job (`npm ci` + type-check + build); ruff advisory (legacy nits).
+    Verified green end-to-end on Actions (both jobs `success`) via `gh run watch`.
+
+---
+
 ## 10. Out-of-plan work (future requests, not in the 17 steps)
 
 Track here anything the user asks for that wasn't in the original plan.
