@@ -28,6 +28,22 @@ export interface LibraryRead {
   deleted: boolean
 }
 
+/** Body for `POST /api/libraries` (mirror of `LibraryCreate`). */
+export interface LibraryCreate {
+  name: string
+  type: LibraryType
+  root_path: string
+  folder_strategy: LibraryFolderStrategy
+  cover_strategy?: string
+  providers: string[]
+  italian_priority: boolean
+  follow_interval_hours: number
+  jpg_quality: number
+}
+
+/** Body for `PATCH /api/libraries/{id}` — all fields optional. */
+export type LibraryUpdate = Partial<LibraryCreate>
+
 export interface ProviderHealth {
   provider: string
   healthy: boolean

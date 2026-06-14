@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, Plus } from 'lucide-vue-next'
+import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-vue-next'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSeriesStore } from '@/stores/series'
 import SeriesCard from '@/components/SeriesCard.vue'
 import SearchDialog from '@/components/SearchDialog.vue'
+import LibraryForm from '@/components/LibraryForm.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +14,19 @@ const libraries = useLibrariesStore()
 const series = useSeriesStore()
 
 const dialogOpen = ref(false)
+const editOpen = ref(false)
+
+async function deleteLibrary(): Promise<void> {
+  if (libraryId.value == null) return
+  if (!window.confirm('Eliminare questa libreria? (i file su disco restano)')) return
+  try {
+    await libraries.remove(libraryId.value)
+    await router.push('/')
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('delete library failed', e)
+  }
+}
 
 const libraryId = computed<number | null>(() => {
   const raw = route.params.id
@@ -79,14 +93,24 @@ function onAdded(payload: { seriesId: number; title: string }): void {
             {{ followedCount }} seguite
           </p>
         </div>
-        <button
-          type="button"
-          class="btn-primary"
-          @click="dialogOpen = true"
-        >
-          <Plus class="size-4" />
-          Aggiungi serie
-        </button>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn" @click="editOpen = true">
+            <Pencil class="size-4" />
+            Modifica
+          </button>
+          <button
+            type="button"
+            class="btn border-rose-300 text-rose-600 dark:border-rose-700 dark:text-rose-300"
+            @click="deleteLibrary"
+          >
+            <Trash2 class="size-4" />
+            Elimina
+          </button>
+          <button type="button" class="btn-primary" @click="dialogOpen = true">
+            <Plus class="size-4" />
+            Aggiungi serie
+          </button>
+        </div>
       </header>
 
       <div
@@ -120,6 +144,13 @@ function onAdded(payload: { seriesId: number; title: string }): void {
         :default-library-id="libraryId"
         @close="dialogOpen = false"
         @added="onAdded"
+      />
+
+      <LibraryForm
+        :open="editOpen"
+        :library="library"
+        @close="editOpen = false"
+        @saved="editOpen = false"
       />
     </template>
   </div>

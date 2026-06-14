@@ -556,6 +556,12 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
     `tests/test_auth.py` (6). Suite **212 passed**; frontend type-check + build clean.
   - Remaining: Docker (Step 16, on the NAS), Cloudflare handler, library-from-UI, SQLite backup,
     `series_external_ids` per-library.
+- **2026-06-14 — Library management from the UI:**
+  - `frontend/src/components/LibraryForm.vue` (create + edit drawer: name, type, root_path,
+    folder strategy, providers multi-select from known scrapers, italian priority, follow
+    interval, jpg quality). Wired into `LibraryList` (create) and `LibraryDetail` (Edit + Delete).
+    Store gained `create`/`update`/`remove` + forced re-fetch. type-check + build clean; live
+    create→edit→delete verified on the prod path. Closes the "library only via Swagger" gap.
 
 ---
 

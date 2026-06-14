@@ -2,6 +2,7 @@
 import { onMounted, reactive } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { useLibrariesStore } from '@/stores/libraries'
+import LibraryForm from '@/components/LibraryForm.vue'
 
 const store = useLibrariesStore()
 
@@ -89,30 +90,10 @@ onMounted(() => {
       </RouterLink>
     </div>
 
-    <Teleport to="body">
-      <div
-        v-if="ui.creating"
-        class="fixed inset-0 z-50 flex bg-black/40"
-        @click.self="ui.creating = false"
-      >
-        <aside
-          class="ml-auto w-96 bg-white p-6 shadow-xl dark:bg-slate-900"
-          role="dialog"
-          aria-label="Crea libreria"
-        >
-          <h2 class="text-lg font-semibold">Nuova libreria</h2>
-          <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            TODO Step 14 — form completo.
-          </p>
-          <button
-            type="button"
-            class="btn mt-4"
-            @click="ui.creating = false"
-          >
-            Chiudi
-          </button>
-        </aside>
-      </div>
-    </Teleport>
+    <LibraryForm
+      :open="ui.creating"
+      @close="ui.creating = false"
+      @saved="ui.creating = false"
+    />
   </div>
 </template>

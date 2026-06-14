@@ -22,8 +22,8 @@ First functional release. An Italian-first, self-hosted manga downloader.
   download CBZs; **covers** endpoint.
 - **Domain health + auto-fallback**: health cron pings source domains; 3 failures flip a domain
   unhealthy and `DomainRegistry` routes to a healthy alternate; admin check/reset endpoints.
-- **Vue 3 SPA**: libraries, search + add, series detail (chapters, backfill, follow, covers),
-  jobs (live), settings (effective config + provider health).
+- **Vue 3 SPA**: libraries (create/edit/delete from the UI), search + add, series detail
+  (chapters, backfill, follow, covers), jobs (live), settings (effective config + provider health).
 - **REST API** with structured error responses; SQLite via Alembic migrations (12 tables).
 - **Optional auth**: single-admin HTTP Basic gate over `/api` and `/opds` (`AUTH_ENABLED` +
   `ADMIN_PASSWORD`; `/api/health` stays public), with a frontend login screen.
