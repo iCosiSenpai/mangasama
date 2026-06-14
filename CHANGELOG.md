@@ -26,6 +26,7 @@ First functional release. An Italian-first, self-hosted manga downloader.
   (chapters, backfill, follow, covers), jobs (live), settings (effective config + provider health),
   toast notifications (vue-sonner) for actions/errors.
 - **REST API** with structured error responses; SQLite via Alembic migrations (12 tables).
+- **Tests & CI**: backend pytest suite + frontend unit tests (vitest); GitHub Actions runs both on every push.
 - **Optional auth**: single-admin HTTP Basic gate over `/api` and `/opds` (`AUTH_ENABLED` +
   `ADMIN_PASSWORD`; `/api/health` stays public), with a frontend login screen.
 - **SQLite backups**: WAL-safe online snapshots (`sqlite3.Connection.backup`) to

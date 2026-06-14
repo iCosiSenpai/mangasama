@@ -595,6 +595,14 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
 
 ---
 
+- **2026-06-14 — Frontend unit tests (vitest):**
+  - Added `vitest` + `@vue/test-utils` + `jsdom` (dev) and `vitest.config.ts` (jsdom, reuses the
+    vite `@` alias); specs excluded from `tsconfig` so build/type-check stay decoupled. Specs:
+    `stores/libraries.spec.ts`, `components/JobBadge.spec.ts`, `components/FollowButton.spec.ts`
+    (10 tests). Added `npm run test` to the CI frontend job. All green locally + in CI.
+
+---
+
 ## 10. Out-of-plan work (future requests, not in the 17 steps)
 
 Track here anything the user asks for that wasn't in the original plan.

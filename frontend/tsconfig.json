@@ -22,5 +22,6 @@
     "allowImportingTsExtensions": false
   },
   "include": ["src/**/*", "src/**/*.vue", "env.d.ts"],
+  "exclude": ["src/**/*.spec.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
