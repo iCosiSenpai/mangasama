@@ -47,8 +47,9 @@ RUN groupadd -g 1000 mangasama && useradd -u 1000 -g mangasama -m -s /bin/bash m
 
 WORKDIR /app
 
-# Install Python deps first (cacheable).
-COPY pyproject.toml ./
+# Install Python deps first (cacheable). README.md + LICENSE are required by
+# hatchling at build time (pyproject `readme` / `license` point at them).
+COPY pyproject.toml README.md LICENSE ./
 COPY app/ ./app/
 RUN pip install --upgrade pip && \
     pip install . && \
@@ -61,11 +62,9 @@ COPY alembic.ini ./
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && sed -i 's/\r$//' /entrypoint.sh
 
-# Copy built frontend.
-COPY --from=frontend-builder /build/frontend/ ../frontend-dist-tmp/
-RUN if [ -d /frontend-dist-tmp/dist ]; then cp -r /frontend-dist-tmp/dist/* /app/app/web/; \
-    elif [ -d /frontend-dist-tmp/app/web ]; then cp -r /frontend-dist-tmp/app/web/* /app/app/web/; \
-    fi && rm -rf /frontend-dist-tmp
+# Copy the built SPA. Vite's outDir is `<repo>/app/web`, which in the builder
+# stage resolves to `/build/app/web` (one level up from /build/frontend).
+COPY --from=frontend-builder /build/app/web/ /app/app/web/
 
 # Pre-create persistent dirs.
 RUN mkdir -p /data /config && chown -R mangasama:mangasama /data /config /app
@@ -78,4 +77,7 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=5).status == 200 else 1)"
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]
+# `python -m uvicorn` (not the console script) so the working dir /app is on
+# sys.path and the local `app` package — which contains the built `app/web` —
+# is the one imported (main.py derives the SPA dir from app.main.__file__).
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]

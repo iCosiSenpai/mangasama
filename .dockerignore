@@ -1,0 +1,47 @@
+# Keep the build context small + clean. Docker does NOT read .gitignore.
+
+# VCS / IDE
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node / frontend build artifacts (the image rebuilds these)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+app/web/
+
+# Runtime data / local dev dirs / secrets
+data/
+dev_data/
+dev_config/
+config/cookies/
+config/.cache/
+config/backups/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+.env.*
+*.log
+logs/
+
+# Repo meta not needed in the image
+tests/
+.claude/
+docker-compose.override.yml

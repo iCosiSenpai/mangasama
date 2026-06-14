@@ -179,11 +179,17 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked
     mangakakalot accrued `fail_count`); reset re-enabled a source. The 3-fail flip + alternate
     failover are covered deterministically by tests.
 
-- [ ] **Step 16: Docker multi-stage build + healthcheck**
-  - Full multi-stage Dockerfile wired to real frontend build (`npm run build`)
-  - `HEALTHCHECK` calling `GET /api/health` every 60s
-  - SQLite backup cron (optional, `BACKUP_ENABLED=true`)
-  - **Checkpoint**: `docker build . && docker compose up -d`; service healthy at `:8000`; frontend served at `/`.
+- [~] **Step 16: Docker multi-stage build + healthcheck** *(code ready; build/run to verify on the NAS)*
+  - Multi-stage `docker/Dockerfile` finalized + fixed: node builds the SPA → `/build/app/web`,
+    copied directly into the runtime image (was broken — served the placeholder); `README.md`+`LICENSE`
+    now copied before `pip install .` (hatchling needs them); CMD uses `python -m uvicorn` so the
+    local `app` (with `app/web`) is imported. `HEALTHCHECK` on `/api/health`; non-root user.
+  - Added **`.dockerignore`** (keeps `.git`/`.venv`/`node_modules`/`dev_data`/`*.db`/`app/web`/`tests` out).
+  - `docker-compose.yml` (volumes `/data`+`/config`, env w/ defaults, healthcheck, FlareSolverr sidecar commented).
+  - SQLite backup cron (`BACKUP_ENABLED`) — still TODO.
+  - **Checkpoint (on the NAS)**: `docker compose build && up -d` → `/api/health` 200, `/` serves the
+    SPA (not the placeholder), `/data`+`/config` volumes persist, healthcheck `healthy`. `docker` is
+    not available in the dev sandbox, so the build was reviewed statically here and is verified on deploy.
 
 - [x] **Step 17: Documentation**
   - `docs/architecture.md` (components, boot order, core flows, 12-table data model, invariants),
