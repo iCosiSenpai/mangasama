@@ -33,6 +33,28 @@ async def test_start_scheduler_registers_jobs():
 
 
 @pytest.mark.asyncio
+async def test_backup_job_registered_only_when_enabled(monkeypatch):
+    from app.settings import get_settings
+
+    # Disabled by default → no backup job.
+    jobs.start_scheduler()
+    try:
+        assert "backup" not in {j.id for j in jobs.get_scheduler().get_jobs()}
+    finally:
+        jobs.stop_scheduler()
+
+    # Enabled → backup job present.
+    monkeypatch.setenv("BACKUP_ENABLED", "true")
+    get_settings.cache_clear()
+    jobs.start_scheduler()
+    try:
+        assert "backup" in {j.id for j in jobs.get_scheduler().get_jobs()}
+    finally:
+        jobs.stop_scheduler()
+    get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
 async def test_cleanup_deletes_old_provider_jobs():
     now = datetime.now(timezone.utc)
     async with session_scope() as s:

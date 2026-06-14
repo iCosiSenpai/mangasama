@@ -27,12 +27,15 @@ First functional release. An Italian-first, self-hosted manga downloader.
 - **REST API** with structured error responses; SQLite via Alembic migrations (12 tables).
 - **Optional auth**: single-admin HTTP Basic gate over `/api` and `/opds` (`AUTH_ENABLED` +
   `ADMIN_PASSWORD`; `/api/health` stays public), with a frontend login screen.
+- **SQLite backups**: WAL-safe online snapshots (`sqlite3.Connection.backup`) to
+  `<config>/backups/` with age-based retention; daily cron when `BACKUP_ENABLED=true`, plus a
+  manual `POST /api/settings/backup` and a "Backup ora" button in Settings.
 
 ### Known limitations / roadmap
 - **Cloudflare solver** dispatch (Playwright/FlareSolverr) not yet implemented — CF-fronted
   domains currently fail over to the next source.
 - **Docker**: multi-stage image + compose + healthcheck + `.dockerignore` are ready; the actual
-  `docker compose build && up` is verified at deploy time (NAS). SQLite backup cron still TODO.
+  `docker compose build && up` is verified at deploy time (NAS).
 - `series_external_ids` is globally unique on `(provider, external_id)`, so the same source series
   can't yet be tracked in two libraries simultaneously.
 - Settings are read-only in the UI (the small `PATCH /api/settings` allow-list is API-only).

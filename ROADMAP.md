@@ -186,7 +186,7 @@ Legend: `[x]` done · `[~]` in progress · `[ ]` not started · `[!]` blocked
     local `app` (with `app/web`) is imported. `HEALTHCHECK` on `/api/health`; non-root user.
   - Added **`.dockerignore`** (keeps `.git`/`.venv`/`node_modules`/`dev_data`/`*.db`/`app/web`/`tests` out).
   - `docker-compose.yml` (volumes `/data`+`/config`, env w/ defaults, healthcheck, FlareSolverr sidecar commented).
-  - SQLite backup cron (`BACKUP_ENABLED`) — still TODO.
+  - SQLite backup cron (`BACKUP_ENABLED`) — **done** (see §9 backup entry).
   - **Checkpoint (on the NAS)**: `docker compose build && up -d` → `/api/health` 200, `/` serves the
     SPA (not the placeholder), `/data`+`/config` volumes persist, healthcheck `healthy`. `docker` is
     not available in the dev sandbox, so the build was reviewed statically here and is verified on deploy.
@@ -568,6 +568,16 @@ If a step is partially done, leave it as `[~]` and add a note in §9.
     interval, jpg quality). Wired into `LibraryList` (create) and `LibraryDetail` (Edit + Delete).
     Store gained `create`/`update`/`remove` + forced re-fetch. type-check + build clean; live
     create→edit→delete verified on the prod path. Closes the "library only via Swagger" gap.
+
+---
+
+- **2026-06-14 — SQLite backup:**
+  - `app/services/backup.py` — WAL-safe online snapshot (`sqlite3.Connection.backup`) to
+    `<config>/backups/mangasama-<ts>.db` + age-based pruning (`backup_retention_days`).
+    Daily scheduler job `backup` registered only when `BACKUP_ENABLED`; manual
+    `POST /api/settings/backup` (always available) + "Backup ora" button in Settings.
+  - Tests: `tests/test_backup.py` (3) + scheduler/settings extensions; live `POST` produced a
+    valid 13-table snapshot. Suite green; frontend type-check + build clean.
 
 ---
 

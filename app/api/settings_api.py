@@ -47,3 +47,18 @@ async def reset_provider(source: str, session: DBSession) -> HealthSnapshot:
     await settings_service.reset_provider_health(session, source)
     await session.commit()
     return await settings_service.get_provider_health(session)
+
+
+@router.post("/settings/backup")
+async def run_backup() -> dict:
+    """Admin: create a WAL-safe SQLite backup now (works regardless of BACKUP_ENABLED)."""
+    import asyncio
+
+    from app.services.backup import create_backup, list_backups
+
+    path = await asyncio.to_thread(create_backup)
+    return {
+        "created": path.name,
+        "size_bytes": path.stat().st_size,
+        "total_backups": len(list_backups()),
+    }

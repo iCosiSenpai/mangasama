@@ -1,9 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
-import { RefreshCw } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
+import { Database, RefreshCw } from 'lucide-vue-next'
 import { useSettingsStore } from '@/stores/settings'
 
 const store = useSettingsStore()
+
+const backingUp = ref(false)
+const backupMsg = ref<string | null>(null)
+
+async function doBackup(): Promise<void> {
+  backingUp.value = true
+  backupMsg.value = null
+  try {
+    const res = await store.runBackup()
+    backupMsg.value = `Backup creato: ${res.created} (${res.total_backups} totali)`
+  } catch {
+    backupMsg.value = 'Backup fallito'
+  } finally {
+    backingUp.value = false
+  }
+}
 
 const defaults = computed<[string, unknown][]>(() =>
   Object.entries(store.effective?.library_defaults ?? {}),
@@ -87,6 +103,15 @@ onMounted(() => {
             <dd class="text-right">{{ Array.isArray(v) ? v.join(', ') : String(v) }}</dd>
           </div>
         </dl>
+
+        <h3 class="mt-4 text-xs font-semibold uppercase text-slate-500">Backup</h3>
+        <div class="mt-1 flex items-center gap-3">
+          <button type="button" class="btn" :disabled="backingUp" @click="doBackup">
+            <Database class="size-4" :class="{ 'animate-pulse': backingUp }" />
+            Backup ora
+          </button>
+          <span v-if="backupMsg" class="text-xs text-slate-500">{{ backupMsg }}</span>
+        </div>
       </div>
 
       <div class="card p-4">

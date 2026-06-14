@@ -29,5 +29,12 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  return { effective, health, status, error, load }
+  async function runBackup(): Promise<{ created: string; total_backups: number }> {
+    const { data } = await client.post<{ created: string; size_bytes: number; total_backups: number }>(
+      '/api/settings/backup',
+    )
+    return data
+  }
+
+  return { effective, health, status, error, load, runBackup }
 })

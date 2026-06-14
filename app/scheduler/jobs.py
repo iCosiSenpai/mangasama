@@ -47,6 +47,16 @@ async def _run_domain_health() -> None:
     logger.info("scheduler.domain_health", **result)
 
 
+async def _run_backup() -> None:
+    """WAL-safe SQLite backup (only registered when BACKUP_ENABLED)."""
+    import asyncio
+
+    from app.services.backup import create_backup
+
+    path = await asyncio.to_thread(create_backup)
+    logger.info("scheduler.backup", path=str(path))
+
+
 async def _run_cleanup() -> None:
     """Delete `provider_jobs` finished longer ago than the retention window."""
     from app.db.session import session_scope
@@ -111,6 +121,16 @@ def start_scheduler() -> None:
         coalesce=True,
         replace_existing=True,
     )
+    if settings.backup_enabled:
+        sched.add_job(
+            _run_backup,
+            trigger="interval",
+            hours=24,
+            id="backup",
+            max_instances=1,
+            coalesce=True,
+            replace_existing=True,
+        )
     sched.start()
     _scheduler = sched
     logger.info(

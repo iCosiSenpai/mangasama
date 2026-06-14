@@ -92,3 +92,13 @@ async def test_run_provider_health_check(client: AsyncClient, monkeypatch) -> No
     assert r.status_code == 200
     names = [p["provider"] for p in r.json()["providers"]]
     assert "mangadex" in names
+
+
+@pytest.mark.asyncio
+async def test_run_backup(client: AsyncClient) -> None:
+    r = await client.post("/api/settings/backup")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["created"].startswith("mangasama-")
+    assert body["total_backups"] >= 1
+    assert (get_settings().backups_dir / body["created"]).exists()
