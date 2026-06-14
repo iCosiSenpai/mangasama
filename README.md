@@ -98,6 +98,9 @@ npm run type-check && npm run build # build the SPA into app/web/
 node ../tests/frontend/smoke.js     # backend must be running on :8000
 ```
 
+CI (GitHub Actions, `.github/workflows/ci.yml`) runs the backend test suite and the
+frontend type-check + build on every push to `main` and on pull requests.
+
 ## Project layout
 
 ```
