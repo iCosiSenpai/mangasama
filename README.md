@@ -21,7 +21,7 @@
 ## Quickstart (Docker)
 
 ```bash
-git clone https://github.com/mangasama/mangasama.git
+git clone https://github.com/iCosiSenpai/mangasama.git
 cd mangasama
 cp .env.example .env
 docker compose up -d
@@ -46,7 +46,7 @@ The container exposes a `HEALTHCHECK` on `GET /api/health`. See [docs/architectu
 ## Quickstart (local dev)
 
 ```bash
-git clone https://github.com/mangasama/mangasama.git
+git clone https://github.com/iCosiSenpai/mangasama.git
 cd mangasama
 python -m venv .venv && . .venv/bin/activate  # or .venv\Scripts\activate on Windows
 pip install -e ".[dev]"
@@ -81,12 +81,37 @@ See [docs/architecture.md](docs/architecture.md) for the data flow diagram.
 |---|---|---|
 | `DATA_DIR` | `/data` | SQLite DB + library folders |
 | `CONFIG_DIR` | `/config` | YAML configs, cookie cache |
-| `AUTH_ENABLED` | `false` | Set to `true` and set `ADMIN_PASSWORD` to gate the UI |
+| `AUTH_ENABLED` | `false` | Set to `true` and set `ADMIN_PASSWORD` to gate the API/OPDS |
+| `ADMIN_PASSWORD` | _(empty)_ | Single-admin HTTP Basic password (required when auth is on) |
+| `AUTH_MAX_FAILURES` | `10` | Failed auth attempts from one client before a temporary lockout |
+| `AUTH_LOCKOUT_SECONDS` | `60` | How long a client is locked out (HTTP 429) after too many failures |
+| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins (dev only; prod is same-origin) |
+| `FORWARDED_ALLOW_IPS` | `*` | Client IPs trusted for `X-Forwarded-*`; tighten to your proxy CIDR in prod |
 | `CLOUDFLARE_SOLVER` | unset | `playwright` or `flaresolverr` |
 | `SCRAPER_MANGAPARK_ENABLED` | `false` | Tier-2 opt-in |
 
 See [`.env.example`](.env.example) for the full list of environment variables, and
 `config/default.yaml` / `config/sources.yaml` for YAML defaults and the source registry.
+
+### Security
+
+MangaSama is designed for a **single user on a trusted LAN/NAS**, but ships several hardening
+measures:
+
+- **Security headers** on every response (`Content-Security-Policy`, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`). The strict CSP is
+  skipped only for the interactive API docs.
+- **Optional HTTP Basic gate** over `/api` and `/opds` (`AUTH_ENABLED` + `ADMIN_PASSWORD`), with a
+  constant-time password check and an in-memory **brute-force lockout** (`AUTH_MAX_FAILURES` /
+  `AUTH_LOCKOUT_SECONDS`).
+- **No secret leakage**: `GET /api/settings` redacts the database path; unexpected errors return a
+  generic JSON 500 (the real cause is logged server-side only).
+- **Configurable CORS / proxy trust** via `CORS_ORIGINS` and `FORWARDED_ALLOW_IPS`.
+- **Dependency hygiene**: Dependabot (`.github/dependabot.yml`) plus an advisory `pip-audit` /
+  `npm audit` job in CI.
+
+If you expose MangaSama beyond a trusted network, **always** enable auth, put it behind a TLS
+reverse proxy, and restrict `FORWARDED_ALLOW_IPS` to that proxy.
 
 ## Documentation
 
@@ -103,16 +128,21 @@ in the **Settings** view.
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                          # backend test suite
-ruff check app                     # lint
+pytest -q                            # backend test suite
+pytest -q --cov=app --cov-report=term-missing  # with coverage
+ruff check app tests                 # lint (CI gate)
+mypy app                             # static types (advisory)
 cd frontend
 npm install
-npm run type-check && npm run build # build the SPA into app/web/
-node ../tests/frontend/smoke.js     # backend must be running on :8000
+npm run type-check && npm run test && npm run build  # type-check, vitest, build SPA into app/web/
+node ../tests/frontend/smoke.js      # backend must be running on :8000
 ```
 
-CI (GitHub Actions, `.github/workflows/ci.yml`) runs the backend test suite and the
-frontend type-check + build on every push to `main` and on pull requests.
+CI (GitHub Actions, `.github/workflows/ci.yml`) runs on every push to `main` and on pull requests:
+
+- **Backend**: `ruff` (gate), `mypy` (advisory), `pytest` with coverage.
+- **Frontend**: `type-check`, `vitest`, and `build`.
+- **Security audit** (advisory, non-blocking): `pip-audit` + `npm audit`.
 
 ## Project layout
 
