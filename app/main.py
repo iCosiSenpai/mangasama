@@ -168,19 +168,32 @@ def create_app() -> FastAPI:
     )
 
     # Per-app, in-memory brute-force tracker for the Basic gate. Keyed by
-    # client IP → list of recent failure timestamps. Only failures that
-    # carried an Authorization header count (the initial header-less browser
-    # challenge must not trip the lock).
+    # client IP → list of recent failure timestamps, plus a global bucket
+    # ("__all__") that acts as a backstop: when MangaSama sits behind a proxy
+    # with forwarded_allow_ips="*", the per-request IP can be spoofed via
+    # X-Forwarded-For, so an attacker could rotate it to dodge the per-IP
+    # limit. The global counter still trips after enough total failures.
+    # (For accurate per-IP limiting, set FORWARDED_ALLOW_IPS to your proxy.)
     auth_failures: dict[str, list[float]] = {}
+    global_key = "__all__"
+
+    def _recent(key: str, window: float) -> int:
+        now = time.time()
+        recent = [t for t in auth_failures.get(key, []) if now - t < window]
+        auth_failures[key] = recent
+        return len(recent)
 
     def _is_locked(ip: str, *, max_failures: int, window: float) -> bool:
-        now = time.time()
-        recent = [t for t in auth_failures.get(ip, []) if now - t < window]
-        auth_failures[ip] = recent
-        return len(recent) >= max_failures
+        # Per-IP threshold, or a higher global threshold as a spoofing backstop.
+        return (
+            _recent(ip, window) >= max_failures
+            or _recent(global_key, window) >= max_failures * 5
+        )
 
     def _record_failure(ip: str) -> None:
-        auth_failures.setdefault(ip, []).append(time.time())
+        now = time.time()
+        auth_failures.setdefault(ip, []).append(now)
+        auth_failures.setdefault(global_key, []).append(now)
 
     # Optional single-admin HTTP Basic gate over /api and /opds. No-op unless
     # AUTH_ENABLED=true. `/api/health` and the SPA static stay public so the
@@ -204,9 +217,11 @@ def create_app() -> FastAPI:
                 )
             auth_header = request.headers.get("Authorization")
             if not check_basic_auth(auth_header, settings.admin_password):
-                # Only count attempts that actually supplied credentials, so a
-                # browser's first (header-less) request isn't penalised.
-                if auth_header:
+                # Only count *Basic* attempts that actually supplied
+                # credentials. The header-less browser challenge and unrelated
+                # schemes (e.g. Bearer) must not trip the lockout.
+                scheme = auth_header.split(" ", 1)[0].lower() if auth_header else ""
+                if scheme == "basic":
                     _record_failure(ip)
                     logger.warning("mangasama.auth_failed", client=ip)
                 return Response(

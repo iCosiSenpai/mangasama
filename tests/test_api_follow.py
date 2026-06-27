@@ -86,3 +86,25 @@ async def test_check_follow_enqueues(client: AsyncClient, monkeypatch) -> None:
     async with session_scope() as s:
         n = (await s.execute(select(func.count(FollowLog.id)))).scalar_one()
     assert n == 1
+
+
+@pytest.mark.asyncio
+async def test_check_follow_queue_full_returns_503(client: AsyncClient, monkeypatch) -> None:
+    from app.core.exceptions import DownloadQueueFull
+    from app.scrapers import mangadex as md_module
+
+    def boom(_task):
+        raise DownloadQueueFull("queue is full")
+
+    monkeypatch.setattr(follow_service, "enqueue_download", boom)
+
+    async def fake_chapters(self, external_id, *, language=None, limit=500, offset=0):
+        return [ScrapedChapter(source="mangadex", external_id="c1", url="",
+                               number="1", language="it", volume_number="1")]
+
+    monkeypatch.setattr(md_module.MangaDexScraper, "get_chapters", fake_chapters)
+    sid = await _make_followed_series()
+
+    r = await client.post(f"/api/follow/{sid}/check")
+    assert r.status_code == 503
+    assert r.json()["type"] == "download_queue_full"

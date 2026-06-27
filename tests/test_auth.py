@@ -108,3 +108,20 @@ async def test_headerless_requests_do_not_count_toward_lockout(
         "/api/libraries", headers={"Authorization": _basic("admin", "secret")}
     )
     assert r.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_non_basic_scheme_does_not_count_toward_lockout(
+    lockout_client: AsyncClient,
+) -> None:
+    # Bearer (or any non-Basic) scheme must not accrue Basic-auth failures.
+    for _ in range(5):
+        r = await lockout_client.get(
+            "/api/libraries", headers={"Authorization": "Bearer sometoken"}
+        )
+        assert r.status_code == 401
+    # No lockout → correct Basic credentials still work.
+    r = await lockout_client.get(
+        "/api/libraries", headers={"Authorization": _basic("admin", "secret")}
+    )
+    assert r.status_code == 200

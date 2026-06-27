@@ -82,6 +82,26 @@ async def test_reset_provider_health(client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_reset_provider_health_only_source(client: AsyncClient) -> None:
+    # A source that exists in domain_health but has no registered scraper must
+    # still be resettable (the health snapshot lists it, so the UI can show it).
+    async with session_scope() as s:
+        s.add(DomainHealth(
+            source="legacysite", domain="legacy.example", healthy=False, fail_count=9,
+        ))
+
+    r = await client.post("/api/settings/providers/legacysite/reset")
+    assert r.status_code == 200, r.text
+
+
+@pytest.mark.asyncio
+async def test_reset_unknown_provider_returns_400(client: AsyncClient) -> None:
+    r = await client.post("/api/settings/providers/totally_unknown/reset")
+    assert r.status_code == 400
+    assert r.json()["type"] == "invalid_value"
+
+
+@pytest.mark.asyncio
 async def test_run_provider_health_check(client: AsyncClient, monkeypatch) -> None:
     import httpx
 
