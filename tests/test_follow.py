@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import func, select
 
+from app.core.exceptions import DownloadQueueFull
 from app.db.session import session_scope
 from app.models.orm import (
     Chapter,
@@ -118,6 +119,52 @@ async def test_backfill_count_limits(monkeypatch):
     assert len(collected) == 2
     # `count` takes the latest (highest-numbered) chapters.
     assert {t.chapter.external_id for t in collected} == {"md-ch2", "md-ch3"}
+
+
+@pytest.mark.asyncio
+async def test_check_series_queue_full_reraises_and_does_not_advance(monkeypatch):
+    """A full download queue surfaces (→ 503) and leaves last_checked_at unset."""
+    def boom(_task):
+        raise DownloadQueueFull("full")
+
+    monkeypatch.setattr(follow, "enqueue_download", boom)
+    _patch_chapters(monkeypatch, [_sc("md-ch1", "1")])
+    series_id = await _make_series()
+
+    async with session_scope() as session:
+        with pytest.raises(DownloadQueueFull):
+            await follow.check_series(session, series_id)
+
+    async with session_scope() as session:
+        log_count = (await session.execute(select(func.count(FollowLog.id)))).scalar_one()
+        assert log_count == 0  # no FollowLog written on queue-full
+        series = (await session.execute(
+            select(Series).where(Series.id == series_id)
+        )).scalar_one()
+        assert series.last_checked_at is None  # not advanced → retried next sweep
+
+
+@pytest.mark.asyncio
+async def test_backfill_partial_on_queue_full(monkeypatch):
+    """Backfill reports partial scheduling instead of raising when the queue fills."""
+    collected: list = []
+
+    def enqueue(task):
+        if len(collected) >= 1:
+            raise DownloadQueueFull("full")
+        collected.append(task)
+
+    monkeypatch.setattr(follow, "enqueue_download", enqueue)
+    _patch_chapters(monkeypatch, [_sc("md-ch1", "1"), _sc("md-ch2", "2"), _sc("md-ch3", "3")])
+    series_id = await _make_series()
+
+    async with session_scope() as session:
+        result = await follow.backfill_series(session, series_id)
+
+    assert result["scheduled"] == 1
+    assert result["requested"] == 3
+    assert result["queue_full"] is True
+    assert len(collected) == 1
 
 
 @pytest.mark.asyncio

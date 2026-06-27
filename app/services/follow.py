@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.exceptions import ConfigError, SeriesNotFoundDB
+from app.core.exceptions import ConfigError, DownloadQueueFull, SeriesNotFoundDB
 from app.models.orm import Chapter, FollowLog, Library, Series, Volume
 from app.scrapers.base import BaseScraper, ScrapedChapter
 from app.scrapers.registry import get_scraper
@@ -127,6 +127,12 @@ async def check_series(session: AsyncSession, series_id: int) -> dict:
                 chapter=ch, language=ch.language,
             ))
             enqueued += 1
+    except DownloadQueueFull:
+        # The queue is full: surface this (→ HTTP 503) and do NOT advance
+        # last_checked_at, so the next sweep retries the still-missing chapters
+        # promptly instead of waiting a full follow interval.
+        logger.warning("follow.check_queue_full", series_id=series_id, enqueued=enqueued)
+        raise
     except Exception as e:
         status = "error"
         error = str(e)
@@ -161,11 +167,28 @@ async def backfill_series(
     missing = [c for c in selected if (c.external_id, c.language) not in existing]
     if count is not None and count > 0:
         missing = sorted(missing, key=lambda c: _to_sort(c.number), reverse=True)[:count]
+    scheduled = 0
+    queue_full = False
     for ch in missing:
-        enqueue_download(DownloadTask(
-            series_id=series_id, provider=provider, chapter=ch, language=ch.language,
-        ))
-    return {"scheduled": len(missing), "series_id": series_id}
+        try:
+            enqueue_download(DownloadTask(
+                series_id=series_id, provider=provider, chapter=ch, language=ch.language,
+            ))
+        except DownloadQueueFull:
+            # Report partial scheduling instead of failing the whole request.
+            queue_full = True
+            logger.warning(
+                "follow.backfill_queue_full",
+                series_id=series_id, scheduled=scheduled, requested=len(missing),
+            )
+            break
+        scheduled += 1
+    return {
+        "scheduled": scheduled,
+        "requested": len(missing),
+        "queue_full": queue_full,
+        "series_id": series_id,
+    }
 
 
 async def list_followed_status(
@@ -220,16 +243,28 @@ async def check_due_series(session: AsyncSession) -> dict:
             due_ids.append(series.id)
 
     errors = 0
+    queue_full = False
     for sid in due_ids:
         # Isolate per-series failures: a single bad series (e.g. removed
         # mid-sweep, or a provider blow-up that escapes check_series) must
         # not abort the whole scheduled run.
         try:
             await check_series(session, sid)
+        except DownloadQueueFull:
+            # No point continuing the sweep while the queue is saturated; the
+            # remaining due series keep their last_checked_at and retry next run.
+            queue_full = True
+            logger.warning("follow.sweep_paused_queue_full", series_id=sid)
+            break
         except Exception as e:
             errors += 1
             logger.warning("follow.due_check_failed", series_id=sid, error=str(e))
-    return {"due": len(due_ids), "series_ids": due_ids, "errors": errors}
+    return {
+        "due": len(due_ids),
+        "series_ids": due_ids,
+        "errors": errors,
+        "queue_full": queue_full,
+    }
 
 
 __all__ = [

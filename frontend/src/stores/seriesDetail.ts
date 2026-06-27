@@ -54,17 +54,22 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
     if (current.value && current.value.id === id) current.value.followed = followed
   }
 
-  async function backfill(id: number, count: number): Promise<number> {
+  async function backfill(
+    id: number,
+    count: number,
+  ): Promise<{ scheduled: number; requested?: number; queue_full?: boolean }> {
     backfilling.value = true
     try {
-      const { data } = await client.post<{ scheduled: number }>(
-        `/api/series/${id}/backfill`,
-        null,
-        { params: { count, language_priority: ['it', 'en'] } },
-      )
+      const { data } = await client.post<{
+        scheduled: number
+        requested?: number
+        queue_full?: boolean
+      }>(`/api/series/${id}/backfill`, null, {
+        params: { count, language_priority: ['it', 'en'] },
+      })
       // Give the workers a moment, then refresh the chapter list.
       window.setTimeout(() => void loadChapters(id), 4000)
-      return data.scheduled
+      return data
     } finally {
       backfilling.value = false
     }

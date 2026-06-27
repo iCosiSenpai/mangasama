@@ -57,8 +57,14 @@ async function onFollow(): Promise<void> {
 async function onBackfill(): Promise<void> {
   if (seriesId.value == null) return
   try {
-    const scheduled = await store.backfill(seriesId.value, backfillCount.value)
-    toast.success(`Backfill avviato: ${scheduled} capitoli in coda`)
+    const res = await store.backfill(seriesId.value, backfillCount.value)
+    if (res.queue_full) {
+      toast.warning(
+        `Coda piena: pianificati ${res.scheduled}/${res.requested ?? '?'} capitoli. Riprova più tardi.`,
+      )
+    } else {
+      toast.success(`Backfill avviato: ${res.scheduled} capitoli in coda`)
+    }
   } catch {
     toast.error('Backfill fallito')
   }
@@ -222,10 +228,13 @@ async function onRefreshMetadata(): Promise<void> {
       <ErrorPanel
         v-if="store.chaptersStatus === 'error'"
         :message="store.chaptersError"
+        class="mb-3"
         @retry="store.loadChapters(store.current.id)"
       />
+      <!-- Keep showing any chapters already loaded; the error banner above
+           signals that the latest refresh failed without hiding the list. -->
       <ChapterList
-        v-else
+        v-if="store.chaptersStatus !== 'error' || store.chapters.length"
         :chapters="store.chapters"
         :loading="store.chaptersStatus === 'loading'"
         @redownload="onRedownload"

@@ -46,9 +46,12 @@ async def reset_provider(source: str, session: DBSession) -> HealthSnapshot:
     """Admin: clear a source's failure state (re-enable a flipped domain)."""
     from app.scrapers.registry import get_scraper_registry
 
-    if source not in get_scraper_registry().names():
+    # Accept any source that is either a registered scraper OR already tracked
+    # in domain_health (the health snapshot lists both, so the UI may show a
+    # source that has rows but no registered scraper).
+    reset_count = await settings_service.reset_provider_health(session, source)
+    if reset_count == 0 and source not in get_scraper_registry().names():
         raise ValueError(f"unknown provider: {source!r}")
-    await settings_service.reset_provider_health(session, source)
     await session.commit()
     return await settings_service.get_provider_health(session)
 
