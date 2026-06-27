@@ -32,23 +32,25 @@ desktop.
 
 ## Install with Docker
 
-You only need **Docker** with the **Docker Compose** plugin. MangaSama builds from this repository
-(there’s no separate image to pull), so the steps are the same everywhere: get the files, then
-`docker compose up -d`.
+You only need **Docker** with the **Docker Compose** plugin. The image is published to GitHub
+Container Registry, so you just need the `docker-compose.yml` file — no need to clone the whole
+project.
 
-### 1. Get the files
+### 1. Create a folder and get the compose file
 
 ```bash
-git clone https://github.com/iCosiSenpai/mangasama.git
-cd mangasama
+mkdir mangasama && cd mangasama
+curl -O https://raw.githubusercontent.com/iCosiSenpai/mangasama/main/docker-compose.yml
 ```
 
-No `git`? Download the repository as a ZIP from GitHub (**Code ▸ Download ZIP**) and unzip it.
+(No `curl`? Just open that URL in a browser and save the file into the folder. On a NAS, create the
+folder and upload the file with File Station / File Manager.)
 
 ### 2. (Optional) create your settings file
 
 ```bash
-cp .env.example .env
+curl -O https://raw.githubusercontent.com/iCosiSenpai/mangasama/main/.env.example
+mv .env.example .env
 ```
 
 Edit `.env` only if you want to turn on a login, backups, etc. The defaults work out of the box.
@@ -59,8 +61,8 @@ Edit `.env` only if you want to turn on a login, backups, etc. The defaults work
 docker compose up -d
 ```
 
-The first start builds the image, runs the database setup automatically, and launches the app.
-Then open:
+This pulls the pre-built image, runs the database setup automatically, and launches the app. Then
+open:
 
 ```
 http://<host>:8000
@@ -70,6 +72,12 @@ http://<host>:8000
 - On a NAS / another machine: `http://<NAS-IP>:8000` (e.g. `http://192.168.1.50:8000`)
 
 That’s it — create a library, search a series, and click **Follow**.
+
+> **Prefer to build from source?** Clone the repo and use the build override:
+> ```bash
+> git clone https://github.com/iCosiSenpai/mangasama.git && cd mangasama
+> docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+> ```
 
 ### Where your files live
 
@@ -99,10 +107,11 @@ and the CBZ files show up directly in that host folder.
 ### Updating to a new version
 
 ```bash
-git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
+(Building from source? `git pull` then `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.)
 Your data and config volumes are preserved across updates.
 
 ---
@@ -110,18 +119,21 @@ Your data and config volumes are preserved across updates.
 ## Platform notes
 
 ### Synology (DSM 7 — Container Manager)
-1. Copy the project folder to your NAS (e.g. `/volume1/docker/mangasama`) via File Station or `git`.
-2. **Container Manager ▸ Project ▸ Create**, set the path to that folder (it contains
-   `docker-compose.yml`), and let it build.
+1. Create a folder on the NAS (e.g. `/volume1/docker/mangasama`) and upload `docker-compose.yml`
+   into it with File Station.
+2. **Container Manager ▸ Project ▸ Create**, point it at that folder, and start — it pulls the image.
 3. Open `http://<NAS-IP>:8000`. For a visible library folder, use the bind-mount override above.
 
 ### QNAP (Container Station)
 Container Station ▸ **Applications ▸ Create**, paste the contents of `docker-compose.yml` (and your
-override), then start. Browse to `http://<NAS-IP>:8000`.
+override), then start — it pulls the image. Browse to `http://<NAS-IP>:8000`.
 
 ### Unraid
 Use the **Compose Manager** plugin: add a new stack, paste `docker-compose.yml`, and start. Map the
 volumes to your array shares (e.g. `/mnt/user/manga:/data`) for visible files.
+
+> The published image is **multi-arch** (`linux/amd64` + `linux/arm64`), so it runs on Intel/AMD
+> NAS and desktops as well as ARM boards (e.g. ARM Synology models, Raspberry Pi).
 
 ### Windows / macOS (Docker Desktop)
 Install **Docker Desktop**, then run the three commands from *Install with Docker* in a terminal

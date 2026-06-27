@@ -1,9 +1,9 @@
 services:
   mangasama:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-    image: mangasama/mangasama:0.1.0
+    # Pre-built image published to GitHub Container Registry. To build from
+    # source instead, add the override file:
+    #   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+    image: ghcr.io/icosisenpai/mangasama:latest
     container_name: mangasama
     restart: unless-stopped
     ports:
