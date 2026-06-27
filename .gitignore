@@ -58,6 +58,18 @@ app/web/
 .env.local
 .env.*.local
 
+# Secrets / credentials (never commit these)
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+secrets.yaml
+secrets.yml
+config/*.local.yaml
+config/secrets.yaml
+*.bak
+
 # Logs
 *.log
 logs/
