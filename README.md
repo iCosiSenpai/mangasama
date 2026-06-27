@@ -1,176 +1,307 @@
 # MangaSama
 
-> Personal archival manga downloader. Italian-first sources, multi-library, follow scheduler, CBZ output, OPDS catalog. Single Docker container.
+> Your personal manga library that downloads itself. Follow a series once, and MangaSama keeps
+> grabbing new chapters into tidy folders on your NAS or computer — Italian-first, ready for Komga,
+> Kavita, and any OPDS e-reader. All in **one Docker container**.
 
-**MangaSama** lets you **follow** any manga, manhua, or manhwa and automatically downloads new chapters into your NAS/PC/Mac folders, organised in Komga/Kavita-compatible folder structures with embedded `ComicInfo.xml` metadata. It also serves an **OPDS 1.2 catalog** so e-readers and reader apps (Moon+ Reader, KyBook, Komga, Kavita) can browse and download directly.
+MangaSama lets you **follow** manga, manhua, and manhwa and automatically downloads new chapters as
+**CBZ files** (with embedded `ComicInfo.xml` metadata) into folders that Komga, Kavita, YACReader,
+and Moon+ Reader understand. It also serves an **OPDS 1.2 catalog**, so reader apps can browse and
+download straight from MangaSama.
 
-**Features**
+It runs anywhere Docker runs: **Synology / QNAP / Unraid NAS**, or a **Windows / macOS / Linux**
+desktop.
 
-- 🌍 **Multi-source, Italian-first**: **MangaWorld** (IT) + **MangaDex** (IT scanlations) as active scrapers; Tier-2 sources (Bato, MangaKakalot, MangaPark) are registered in config for future scrapers. See [docs/sources.md](docs/sources.md).
-- ⭐ **Follow / Like** series and have new chapters auto-downloaded.
-- 📚 **Multi-library**: separate libraries for different content types or organisations; each library has its own root path, source priority, and folder strategy.
-- 📦 **CBZ with ComicInfo.xml v2.1** embedded — works with Komga, Kavita, YACReader, Moon+ Reader.
-- 🗂 **Komga/Kavita-compatible folder strategies**: `series_volume_chapter`, `series_volume`, `chapter_flat`, `onefile_per_volume`.
-- 📖 **OPDS 1.2** catalog for e-readers.
-- 🛡 **Anti-bot aware**: optional Playwright or FlareSolverr sidecar, per-domain cookie cache, graceful fallback to the next source.
-- 🇮🇹 **Italian priority**: when a series has both Italian and English translations, Italian wins.
-- 🐳 **Single Docker container**, `/data` and `/config` volumes — drop in your NAS, Synology, Unraid, or Raspberry Pi.
+---
 
-**Non-goals (v1)**: light novels, western comics, multi-user accounts, public service scraping. MangaSama is for personal archival.
+## What you get
 
-## Quickstart (Docker)
+- 🌍 **Italian-first, multi-source** — MangaWorld (IT) + MangaDex; when a chapter exists in both
+  Italian and English, Italian wins.
+- ⭐ **Follow & forget** — new chapters are downloaded automatically on a schedule.
+- 📚 **Multiple libraries** — separate folders/rules for different collections.
+- 📦 **CBZ + ComicInfo.xml** — clean files for Komga, Kavita, YACReader, Moon+ Reader.
+- 📖 **OPDS 1.2 catalog** — read on your e-reader / phone app.
+- 🖥 **Simple web UI** — search, add, follow, and watch downloads live.
+- 🐳 **One container, two folders** (`/data`, `/config`) — drop it on your NAS and go.
+
+> **Not included (v1):** light novels, western comics, multi-user accounts. MangaSama is for
+> personal archiving of content you’re allowed to download.
+
+---
+
+## Install with Docker
+
+You only need **Docker** with the **Docker Compose** plugin. MangaSama builds from this repository
+(there’s no separate image to pull), so the steps are the same everywhere: get the files, then
+`docker compose up -d`.
+
+### 1. Get the files
 
 ```bash
 git clone https://github.com/iCosiSenpai/mangasama.git
 cd mangasama
+```
+
+No `git`? Download the repository as a ZIP from GitHub (**Code ▸ Download ZIP**) and unzip it.
+
+### 2. (Optional) create your settings file
+
+```bash
 cp .env.example .env
-docker compose up -d
-open http://localhost:8000
 ```
 
-That's it. The first start runs Alembic migrations automatically and creates the SQLite DB at `/data/mangasama.db`. Open the UI, create a library, search for a series, click **Follow**.
+Edit `.env` only if you want to turn on a login, backups, etc. The defaults work out of the box.
 
-### Deploy on a NAS / self-host
-
-Copy (or `git clone`) the repo onto the host and run `docker compose up -d` — the multi-stage
-build compiles the Vue SPA and the Python backend into one image, runs migrations on boot, and
-serves the UI + API + OPDS on `:8000`. Two volumes persist your data:
-
-- **`/data`** — SQLite DB and the downloaded library folders (point libraries' `root_path` here, e.g. `/data/manga_it`).
-- **`/config`** — YAML config, cookie cache, and backups.
-
-Useful env (in `.env`): `AUTH_ENABLED=true` + `ADMIN_PASSWORD=…` (HTTP Basic gate over the API/OPDS),
-`BACKUP_ENABLED=true` (daily WAL-safe SQLite backup to `/config/backups`), `CLOUDFLARE_SOLVER`.
-The container exposes a `HEALTHCHECK` on `GET /api/health`. See [docs/architecture.md](docs/architecture.md).
-
-## Quickstart (local dev)
+### 3. Start it
 
 ```bash
-git clone https://github.com/iCosiSenpai/mangasama.git
-cd mangasama
-python -m venv .venv && . .venv/bin/activate  # or .venv\Scripts\activate on Windows
-pip install -e ".[dev]"
-cd frontend && npm install && npm run build && cd ..
-alembic upgrade head
-uvicorn app.main:app --reload
+docker compose up -d
 ```
 
-Open http://localhost:8000.
-
-## Architecture
+The first start builds the image, runs the database setup automatically, and launches the app.
+Then open:
 
 ```
-Browser ──► FastAPI (Vue 3 SPA served from /)
-             │
-             ├── /api/*        (REST: libraries, series, chapters, jobs, settings)
-             ├── /opds/v1.2/*  (Atom XML for e-readers)
-             │
-             ├── APScheduler ─── follow_check, domain_health, cleanup
-             ├── DownloadQueue ── N asyncio workers ─► CbzPackager
-             │
-             ├── Scrapers:  MangaDex, MangaWorld (+ Bato/MangaKakalot/MangaPark planned)
-             ├── Metadata:  AniList (GraphQL), MangaDex, GoogleBooks (dormant)
-             └── SQLite (libraries, series, volumes, chapters, pages, jobs, ...)
+http://<host>:8000
 ```
 
-See [docs/architecture.md](docs/architecture.md) for the data flow diagram.
+- On the same machine: <http://localhost:8000>
+- On a NAS / another machine: `http://<NAS-IP>:8000` (e.g. `http://192.168.1.50:8000`)
 
-## Configuration
+That’s it — create a library, search a series, and click **Follow**.
+
+### Where your files live
+
+By default MangaSama stores everything in two Docker **named volumes**:
+
+| Volume | Holds |
+|---|---|
+| `mangasama-data` (`/data`) | the database **and your downloaded CBZ library** |
+| `mangasama-config` (`/config`) | configuration, cookie cache, and backups |
+
+**Want the downloaded manga to appear in a normal folder on your NAS/PC** (e.g. a Komga share)?
+Use a *bind mount*. Create a `docker-compose.override.yml` next to `docker-compose.yml` (this file
+is git-ignored, so your customization stays local):
+
+```yaml
+services:
+  mangasama:
+    volumes:
+      - /volume1/manga:/data        # Synology example — your share on the left
+      - /volume1/docker/mangasama-config:/config
+```
+
+On Windows use a path like `C:/Users/you/Manga:/data`; on macOS `/Users/you/Manga:/data`.
+Then point each library’s **Root path** at a subfolder of `/data` (e.g. `/data/manga_it`) in the UI,
+and the CBZ files show up directly in that host folder.
+
+### Updating to a new version
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Your data and config volumes are preserved across updates.
+
+---
+
+## Platform notes
+
+### Synology (DSM 7 — Container Manager)
+1. Copy the project folder to your NAS (e.g. `/volume1/docker/mangasama`) via File Station or `git`.
+2. **Container Manager ▸ Project ▸ Create**, set the path to that folder (it contains
+   `docker-compose.yml`), and let it build.
+3. Open `http://<NAS-IP>:8000`. For a visible library folder, use the bind-mount override above.
+
+### QNAP (Container Station)
+Container Station ▸ **Applications ▸ Create**, paste the contents of `docker-compose.yml` (and your
+override), then start. Browse to `http://<NAS-IP>:8000`.
+
+### Unraid
+Use the **Compose Manager** plugin: add a new stack, paste `docker-compose.yml`, and start. Map the
+volumes to your array shares (e.g. `/mnt/user/manga:/data`) for visible files.
+
+### Windows / macOS (Docker Desktop)
+Install **Docker Desktop**, then run the three commands from *Install with Docker* in a terminal
+(PowerShell on Windows, Terminal on macOS) inside the unzipped folder.
+
+### Linux desktop / server
+Install Docker Engine + the Compose plugin, then run the same three commands.
+
+---
+
+## Optional features
+
+Turn these on by editing `.env` and running `docker compose up -d` again.
+
+### Protect with a login
+Anyone on your network can otherwise reach the app. To require a password:
+
+```ini
+AUTH_ENABLED=true
+ADMIN_PASSWORD=choose-a-strong-password
+```
+
+The username is ignored; only the password matters. The same password also unlocks the OPDS catalog
+in e-reader apps. If you expose MangaSama beyond your home network, also put it behind an HTTPS
+reverse proxy.
+
+### Automatic backups
+```ini
+BACKUP_ENABLED=true
+```
+A daily, safe copy of the database is written to `/config/backups`.
+
+### Sites behind Cloudflare
+Some sources occasionally show a Cloudflare challenge. You can run the optional FlareSolverr helper:
+uncomment the `flaresolverr` service in `docker-compose.yml` and set `CLOUDFLARE_SOLVER=flaresolverr`
+in `.env`. Otherwise MangaSama simply falls back to another source.
+
+---
+
+## Configuration reference
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `DATA_DIR` | `/data` | SQLite DB + library folders |
-| `CONFIG_DIR` | `/config` | YAML configs, cookie cache |
-| `AUTH_ENABLED` | `false` | Set to `true` and set `ADMIN_PASSWORD` to gate the API/OPDS |
-| `ADMIN_PASSWORD` | _(empty)_ | Single-admin HTTP Basic password (required when auth is on) |
-| `AUTH_MAX_FAILURES` | `10` | Failed auth attempts from one client before a temporary lockout |
-| `AUTH_LOCKOUT_SECONDS` | `60` | How long a client is locked out (HTTP 429) after too many failures |
-| `CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated allowed origins (dev only; prod is same-origin) |
-| `FORWARDED_ALLOW_IPS` | `*` | Client IPs trusted for `X-Forwarded-*`; tighten to your proxy CIDR in prod |
+| `DATA_DIR` | `/data` | Database + downloaded library folders |
+| `CONFIG_DIR` | `/config` | Configuration, cookie cache, backups |
+| `AUTH_ENABLED` | `false` | Set `true` (with `ADMIN_PASSWORD`) to require a login |
+| `ADMIN_PASSWORD` | _(empty)_ | The admin password when auth is on |
+| `AUTH_MAX_FAILURES` | `10` | Wrong-password tries before a temporary lockout |
+| `AUTH_LOCKOUT_SECONDS` | `60` | How long a client is blocked after too many failures |
+| `BACKUP_ENABLED` | `false` | Daily safe DB backup to `/config/backups` |
 | `CLOUDFLARE_SOLVER` | unset | `playwright` or `flaresolverr` |
-| `SCRAPER_MANGAPARK_ENABLED` | `false` | Tier-2 opt-in |
+| `CORS_ORIGINS` | localhost dev URLs | Allowed browser origins (dev only; prod is same-origin) |
+| `FORWARDED_ALLOW_IPS` | `*` | Proxy IPs trusted for `X-Forwarded-*`; tighten in production |
 
-See [`.env.example`](.env.example) for the full list of environment variables, and
-`config/default.yaml` / `config/sources.yaml` for YAML defaults and the source registry.
+See [`.env.example`](.env.example) for every option.
 
 ### Security
 
-MangaSama is designed for a **single user on a trusted LAN/NAS**, but ships several hardening
-measures:
+MangaSama is built for a **single user on a trusted home network**, with sensible defaults:
 
-- **Security headers** on every response (`Content-Security-Policy`, `X-Frame-Options: DENY`,
-  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`). The strict CSP is
-  skipped only for the interactive API docs.
-- **Optional HTTP Basic gate** over `/api` and `/opds` (`AUTH_ENABLED` + `ADMIN_PASSWORD`), with a
-  constant-time password check and an in-memory **brute-force lockout** (`AUTH_MAX_FAILURES` /
-  `AUTH_LOCKOUT_SECONDS`).
-- **No secret leakage**: `GET /api/settings` redacts the database path; unexpected errors return a
-  generic JSON 500 (the real cause is logged server-side only).
-- **Configurable CORS / proxy trust** via `CORS_ORIGINS` and `FORWARDED_ALLOW_IPS`.
-- **Dependency hygiene**: Dependabot (`.github/dependabot.yml`) plus an advisory `pip-audit` /
-  `npm audit` job in CI.
+- **Security headers** on every response (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`,
+  `Permissions-Policy`).
+- **Optional login** with a constant-time password check and a **brute-force lockout**.
+- **No secret leakage** — the API hides the database path, and unexpected errors return a generic
+  message (details are logged on the server only).
+- **Dependency hygiene** — Dependabot plus an advisory `pip-audit` / `npm audit` check in CI.
 
-If you expose MangaSama beyond a trusted network, **always** enable auth, put it behind a TLS
-reverse proxy, and restrict `FORWARDED_ALLOW_IPS` to that proxy.
+If you ever expose MangaSama to the internet: enable the login, use HTTPS via a reverse proxy, and
+restrict `FORWARDED_ALLOW_IPS` to that proxy.
+
+---
+
+## Using MangaSama
+
+1. **Create a library** — give it a name, pick a type (manga / manhua / manhwa), and set a **Root
+   path** under `/data` (e.g. `/data/manga_it`).
+2. **Search** a series and **Add** it to the library.
+3. **Follow** it — MangaSama checks for new chapters on a schedule and downloads them.
+4. **Read** — point Komga/Kavita at the same folder, or use the OPDS catalog at
+   `http://<host>:8000/opds/v1.2/root` in your e-reader app.
+
+The **Settings** view shows provider/source health and lets you trigger a manual backup.
+
+---
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — components, boot order, core flows, data model, invariants.
-- [docs/api.md](docs/api.md) — REST + OPDS reference, SSE, error format (also: Swagger at `/api/docs`).
-- [docs/sources.md](docs/sources.md) — per-source notes, domain health/auto-fallback, adding a source.
-- [docs/comicinfo.md](docs/comicinfo.md) — ComicInfo.xml field mapping + CBZ guarantees.
+- [docs/architecture.md](docs/architecture.md) — how it works, boot order, data model.
+- [docs/api.md](docs/api.md) — REST + OPDS reference (also Swagger at `/api/docs`).
+- [docs/sources.md](docs/sources.md) — per-source notes and auto-fallback.
+- [docs/comicinfo.md](docs/comicinfo.md) — ComicInfo.xml mapping + CBZ guarantees.
 - [CHANGELOG.md](CHANGELOG.md) — release notes & known limitations.
 
-The OPDS catalog root is `http://localhost:8000/opds/v1.2/root`. Provider/domain health is shown
-in the **Settings** view.
+---
 
-## Development & testing
+## For developers
+
+<details>
+<summary>Local dev, tests, project layout, and contributing</summary>
+
+### Run from source
+
+```bash
+git clone https://github.com/iCosiSenpai/mangasama.git
+cd mangasama
+python -m venv .venv && . .venv/bin/activate   # .venv\Scripts\activate on Windows
+pip install -e ".[dev]"
+cd frontend && npm install && npm run build && cd ..
+alembic upgrade head
+uvicorn app.main:app --reload                  # http://localhost:8000
+```
+
+For the frontend dev server with hot reload: `cd frontend && npm run dev` (proxies `/api` + `/opds`
+to `:8000`).
+
+### Tests & checks
 
 ```bash
 pip install -e ".[dev]"
-pytest -q                            # backend test suite
-pytest -q --cov=app --cov-report=term-missing  # with coverage
-ruff check app tests                 # lint (CI gate)
-mypy app                             # static types (advisory)
+pytest -q                                       # backend test suite
+pytest -q --cov=app --cov-report=term-missing   # with coverage
+ruff check app tests                            # lint (CI gate)
+mypy app                                         # static types (advisory)
 cd frontend
 npm install
-npm run type-check && npm run test && npm run build  # type-check, vitest, build SPA into app/web/
-node ../tests/frontend/smoke.js      # backend must be running on :8000
+npm run type-check && npm run test && npm run build
+node ../tests/frontend/smoke.js                 # backend must be running on :8000
 ```
 
-CI (GitHub Actions, `.github/workflows/ci.yml`) runs on every push to `main` and on pull requests:
+CI (`.github/workflows/ci.yml`) runs on every push to `main` and on PRs:
 
 - **Backend**: `ruff` (gate), `mypy` (advisory), `pytest` with coverage.
-- **Frontend**: `type-check`, `vitest`, and `build`.
-- **Security audit** (advisory, non-blocking): `pip-audit` + `npm audit`.
+- **Frontend**: `type-check`, `vitest`, `build`.
+- **Security audit** (advisory): `pip-audit` + `npm audit`.
 
-## Project layout
+### Architecture
+
+```
+Browser ──► FastAPI (Vue 3 SPA served from /)
+             ├── /api/*        (REST: libraries, series, chapters, jobs, settings)
+             ├── /opds/v1.2/*  (Atom XML for e-readers)
+             ├── APScheduler ─── follow_check, domain_health, cleanup, backup
+             ├── DownloadQueue ── N asyncio workers ─► CbzPackager
+             ├── Scrapers:  MangaDex, MangaWorld
+             ├── Metadata:  AniList, MangaDex, GoogleBooks (dormant)
+             └── SQLite (libraries, series, volumes, chapters, pages, jobs, ...)
+```
+
+### Project layout
 
 ```
 mangasama/
-├── app/                  # Python backend
-│   ├── api/              # FastAPI routers
-│   ├── core/             # rate limiter, http client, paths
-│   ├── db/               # session + init
-│   ├── models/           # SQLAlchemy 2.0 ORM
-│   ├── schemas/          # Pydantic v2
-│   ├── scrapers/         # Base + MangaDex + MangaWorld (tier-2 planned)
+├── app/                  # Python backend (FastAPI)
+│   ├── api/              # routers
+│   ├── core/             # http client, rate limiter, auth, paths
+│   ├── db/ models/ schemas/
+│   ├── scrapers/         # MangaDex + MangaWorld
 │   ├── metadata/         # AniList, MangaDex, GoogleBooks
 │   ├── services/         # CBZ builder, follow, OPDS, ...
 │   ├── scheduler/        # APScheduler jobs
 │   └── web/              # built Vue assets (gitignored)
 ├── frontend/             # Vue 3 + Vite + Tailwind
 ├── config/               # default.yaml, sources.yaml, logging.yaml
-├── migrations/           # Alembic
-├── docker/               # Dockerfile + entrypoint
-└── tests/                # pytest
+├── migrations/ docker/ tests/
 ```
+
+Contributions: keep `ruff` clean, add tests, and keep the tree runnable. See
+[docs/architecture.md](docs/architecture.md) for the invariants.
+
+</details>
+
+---
 
 ## Roadmap
 
-**v0.1.0** ships: MangaDex + MangaWorld scrapers, FlareSolverr Cloudflare bypass, AniList + MangaDex metadata, follow scheduler, CBZ+ComicInfo, OPDS, Vue 3 UI, Docker with auto-seeded `/config`.
+**v0.1.0** ships: MangaDex + MangaWorld scrapers, FlareSolverr Cloudflare bypass, AniList + MangaDex
+metadata, follow scheduler, CBZ+ComicInfo, OPDS, Vue 3 UI, single Docker image with auto-seeded
+config.
 
-**Planned**: Bato + MangaKakalot + MangaPark scrapers, Playwright CF solver, light novels (Google Books), multi-user auth.
+**Planned**: Bato + MangaKakalot + MangaPark scrapers, Playwright CF solver, light novels.
 
 ## License
 
@@ -178,4 +309,5 @@ MIT. See [LICENSE](LICENSE).
 
 ## Disclaimer
 
-MangaSama is for personal archival of legally-obtained content. Respect the rights of scanlators and publishers. Do not use this tool to redistribute copyrighted material.
+MangaSama is for personal archival of legally-obtained content. Respect the rights of scanlators and
+publishers. Do not use this tool to redistribute copyrighted material.
