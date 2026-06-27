@@ -24,6 +24,15 @@ from app.settings import Settings, get_settings
 logger = structlog.get_logger("mangasama.services.settings")
 
 
+def _redact_db_url(url: str) -> str:
+    """Hide the on-disk DB path from the API surface, keep the driver scheme.
+
+    e.g. ``sqlite+aiosqlite:////data/mangasama.db`` → ``sqlite+aiosqlite:///***``.
+    """
+    scheme, sep, _ = url.partition("://")
+    return f"{scheme}:///***" if sep else "***"
+
+
 def get_effective_settings() -> EffectiveSettings:
     s: Settings = get_settings()
     registry = get_scraper_registry()
@@ -36,7 +45,7 @@ def get_effective_settings() -> EffectiveSettings:
         log_level=s.log_level,
         data_dir=str(s.data_dir),
         config_dir=str(s.config_dir),
-        db_url=s.db_url,
+        db_url=_redact_db_url(s.db_url),
         library_defaults=defaults,
         known_scrapers=known,
         enabled_scrapers=enabled,

@@ -46,6 +46,18 @@ class Settings(BaseSettings):
     # Auth
     auth_enabled: bool = False
     admin_password: str = ""
+    # Brute-force mitigation for the Basic gate: after `auth_max_failures`
+    # wrong-password attempts from one client within the window, that client
+    # is locked out (HTTP 429) for `auth_lockout_seconds`.
+    auth_max_failures: int = 10
+    auth_lockout_seconds: int = 60
+
+    # CORS: comma-separated list of allowed origins for the dev frontend.
+    # Production serves the SPA same-origin, so this is dev-only by default.
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Which client IPs uvicorn trusts for X-Forwarded-* headers. Default "*"
+    # assumes a single isolated reverse proxy; tighten to proxy CIDRs in prod.
+    forwarded_allow_ips: str = "*"
 
     # Cloudflare
     cloudflare_solver: Literal["", "playwright", "flaresolverr"] = ""
@@ -113,6 +125,11 @@ class Settings(BaseSettings):
         db_path = self.data_dir / self.db_filename
         db_path.parent.mkdir(parents=True, exist_ok=True)
         return f"sqlite+aiosqlite:///{db_path.as_posix()}"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Parsed CORS origins (comma-separated env → list)."""
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def db_sync_url(self) -> str:
