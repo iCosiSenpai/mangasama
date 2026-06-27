@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import structlog
 from fastapi import APIRouter, Query, status
 
 from app.deps import DBSession
@@ -14,6 +15,8 @@ from app.schemas.series import (
     SeriesUpdate,
 )
 from app.services import series as series_service
+
+logger = structlog.get_logger("mangasama.api.series")
 
 router = APIRouter(tags=["series"])
 
@@ -86,9 +89,14 @@ async def add_series(
             result = await series_service.refresh_metadata(session, series.id)
             await session.commit()
             return result.series
-        except Exception:
-            # Provider failure shouldn't block series creation.
-            pass
+        except Exception as e:
+            # Provider failure shouldn't block series creation — but it must
+            # be visible in the logs rather than swallowed silently.
+            logger.warning(
+                "series.metadata_refresh_failed",
+                series_id=series.id,
+                error=str(e),
+            )
     await session.commit()
     # Re-fetch to populate the read shape.
     full = await series_service.get_series(session, series.id)

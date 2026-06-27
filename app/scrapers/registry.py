@@ -69,7 +69,9 @@ class ScraperRegistry:
         if not self._loaded:
             self.load_all()
         if name not in self._instances:
-            raise KeyError(f"No scraper registered as {name!r}")
+            from app.core.exceptions import UnknownScraper
+
+            raise UnknownScraper(f"No scraper registered as {name!r}")
         return self._instances[name]
 
     def has(self, name: str) -> bool:

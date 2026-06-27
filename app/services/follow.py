@@ -219,9 +219,17 @@ async def check_due_series(session: AsyncSession) -> dict:
         if last + interval <= now:
             due_ids.append(series.id)
 
+    errors = 0
     for sid in due_ids:
-        await check_series(session, sid)
-    return {"due": len(due_ids), "series_ids": due_ids}
+        # Isolate per-series failures: a single bad series (e.g. removed
+        # mid-sweep, or a provider blow-up that escapes check_series) must
+        # not abort the whole scheduled run.
+        try:
+            await check_series(session, sid)
+        except Exception as e:
+            errors += 1
+            logger.warning("follow.due_check_failed", series_id=sid, error=str(e))
+    return {"due": len(due_ids), "series_ids": due_ids, "errors": errors}
 
 
 __all__ = [

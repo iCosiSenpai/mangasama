@@ -44,6 +44,10 @@ async def run_providers_health_check(session: DBSession) -> HealthSnapshot:
 @router.post("/settings/providers/{source}/reset", response_model=HealthSnapshot)
 async def reset_provider(source: str, session: DBSession) -> HealthSnapshot:
     """Admin: clear a source's failure state (re-enable a flipped domain)."""
+    from app.scrapers.registry import get_scraper_registry
+
+    if source not in get_scraper_registry().names():
+        raise ValueError(f"unknown provider: {source!r}")
     await settings_service.reset_provider_health(session, source)
     await session.commit()
     return await settings_service.get_provider_health(session)
