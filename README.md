@@ -30,89 +30,85 @@ desktop.
 
 ---
 
-## Install with Docker
+## Quick start (Docker Compose)
 
-You only need **Docker** with the **Docker Compose** plugin. The image is published to GitHub
-Container Registry, so you just need the `docker-compose.yml` file — no need to clone the whole
-project.
-
-### 1. Create a folder and get the compose file
-
-```bash
-mkdir mangasama && cd mangasama
-curl -O https://raw.githubusercontent.com/iCosiSenpai/mangasama/main/docker-compose.yml
-```
-
-(No `curl`? Just open that URL in a browser and save the file into the folder. On a NAS, create the
-folder and upload the file with File Station / File Manager.)
-
-### 2. (Optional) create your settings file
-
-```bash
-curl -O https://raw.githubusercontent.com/iCosiSenpai/mangasama/main/.env.example
-mv .env.example .env
-```
-
-Edit `.env` only if you want to turn on a login, backups, etc. The defaults work out of the box.
-
-### 3. Start it
-
-```bash
-docker compose up -d
-```
-
-This pulls the pre-built image, runs the database setup automatically, and launches the app. Then
-open:
-
-```
-http://<host>:8000
-```
-
-- On the same machine: <http://localhost:8000>
-- On a NAS / another machine: `http://<NAS-IP>:8000` (e.g. `http://192.168.1.50:8000`)
-
-That’s it — create a library, search a series, and click **Follow**.
-
-> **Prefer to build from source?** Clone the repo and use the build override:
-> ```bash
-> git clone https://github.com/iCosiSenpai/mangasama.git && cd mangasama
-> docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-> ```
-
-### Where your files live
-
-By default MangaSama stores everything in two Docker **named volumes**:
-
-| Volume | Holds |
-|---|---|
-| `mangasama-data` (`/data`) | the database **and your downloaded CBZ library** |
-| `mangasama-config` (`/config`) | configuration, cookie cache, and backups |
-
-**Want the downloaded manga to appear in a normal folder on your NAS/PC** (e.g. a Komga share)?
-Use a *bind mount*. Create a `docker-compose.override.yml` next to `docker-compose.yml` (this file
-is git-ignored, so your customization stays local):
+You only need **Docker** with the **Compose** plugin. The image is published to GitHub Container
+Registry, so there's nothing to clone. Create an empty folder, and save this as `docker-compose.yml`:
 
 ```yaml
 services:
   mangasama:
+    image: ghcr.io/icosisenpai/mangasama:latest
+    container_name: mangasama
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
     volumes:
-      - /volume1/manga:/data        # Synology example — your share on the left
-      - /volume1/docker/mangasama-config:/config
+      - mangasama-data:/data        # database + your downloaded CBZ library
+      - mangasama-config:/config    # config, cookie cache, backups
+    environment:
+      - TZ=Europe/Rome
+      # --- Optional: require a login (recommended if others can reach this host) ---
+      # - AUTH_ENABLED=true
+      # - ADMIN_PASSWORD=change-me
+      # --- Optional: daily database backup to /config/backups ---
+      # - BACKUP_ENABLED=true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=5).status==200 else 1)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  mangasama-data:
+  mangasama-config:
 ```
 
-On Windows use a path like `C:/Users/you/Manga:/data`; on macOS `/Users/you/Manga:/data`.
-Then point each library’s **Root path** at a subfolder of `/data` (e.g. `/data/manga_it`) in the UI,
-and the CBZ files show up directly in that host folder.
-
-### Updating to a new version
+Then start it:
 
 ```bash
-docker compose pull
 docker compose up -d
 ```
 
-(Building from source? `git pull` then `docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build`.)
-Your data and config volumes are preserved across updates.
+Open **<http://localhost:8000>** (or `http://<NAS-IP>:8000` from another device) — create a library,
+search a series, and click **Follow**.
+
+### Everyday commands
+
+```bash
+docker compose logs -f                          # follow the logs
+docker compose pull && docker compose up -d     # update to the latest version
+docker compose restart                          # restart
+docker compose stop                             # stop (keeps everything)
+docker compose down                             # remove the container (data volumes are kept)
+```
+
+### Make your library visible on disk (optional)
+
+By default files live in Docker-managed volumes (`mangasama-data` = DB + your CBZ library,
+`mangasama-config` = config/cookies/backups). To keep the downloaded manga in a **normal folder you
+can browse** (e.g. a Komga/Kavita share), replace the `volumes:` block with bind mounts:
+
+```yaml
+    volumes:
+      - /volume1/manga:/data                 # host folder : container (Synology example)
+      - /volume1/docker/mangasama:/config
+```
+
+Windows: `C:/Users/you/Manga:/data` · macOS: `/Users/you/Manga:/data`. Then set each library's
+**Root path** to a subfolder of `/data` (e.g. `/data/manga_it`) in the UI, and the CBZ files appear
+right in that host folder. Make sure the host folder is writable by user/group ID **1000** (the
+container's user).
+
+### Build from source (optional)
+
+If you'd rather build the image yourself instead of pulling it:
+
+```bash
+git clone https://github.com/iCosiSenpai/mangasama.git && cd mangasama
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 ---
 
@@ -136,11 +132,12 @@ volumes to your array shares (e.g. `/mnt/user/manga:/data`) for visible files.
 > NAS and desktops as well as ARM boards (e.g. ARM Synology models, Raspberry Pi).
 
 ### Windows / macOS (Docker Desktop)
-Install **Docker Desktop**, then run the three commands from *Install with Docker* in a terminal
-(PowerShell on Windows, Terminal on macOS) inside the unzipped folder.
+Install **Docker Desktop**, create a folder with the `docker-compose.yml` from *Quick start*, then run
+`docker compose up -d` in a terminal (PowerShell on Windows, Terminal on macOS) inside that folder.
 
 ### Linux desktop / server
-Install Docker Engine + the Compose plugin, then run the same three commands.
+Install Docker Engine + the Compose plugin, save the `docker-compose.yml` from *Quick start*, then run
+`docker compose up -d`.
 
 ---
 
