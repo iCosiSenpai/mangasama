@@ -1,22 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { LogOut, Moon, Search, Sun } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useSettingsStore } from '@/stores/settings'
+import { useTheme } from '@/composables/useTheme'
 import Sidebar from './Sidebar.vue'
 
-const dark = ref(true)
 const router = useRouter()
 const auth = useAuthStore()
+const settings = useSettingsStore()
+const { isDark: dark, toggle: toggleTheme } = useTheme()
+
+const version = computed(() => settings.effective?.version ?? null)
 
 onMounted(() => {
-  dark.value = document.documentElement.classList.contains('dark')
+  if (!settings.effective) void settings.load()
 })
-
-function toggleTheme(): void {
-  dark.value = !dark.value
-  document.documentElement.classList.toggle('dark', dark.value)
-}
 
 function logout(): void {
   auth.logout()
@@ -44,6 +44,7 @@ function logout(): void {
           type="button"
           class="btn"
           title="Logout"
+          aria-label="Esci"
           @click="logout"
         >
           <LogOut class="size-4" />
@@ -51,7 +52,7 @@ function logout(): void {
         <button
           type="button"
           class="btn"
-          :aria-label="dark ? 'Switch to light theme' : 'Switch to dark theme'"
+          :aria-label="dark ? 'Passa al tema chiaro' : 'Passa al tema scuro'"
           @click="toggleTheme"
         >
           <Sun v-if="dark" class="size-4" />
@@ -66,7 +67,7 @@ function logout(): void {
       <footer
         class="border-t border-slate-200 px-6 py-3 text-xs text-slate-500 dark:border-slate-800"
       >
-        MangaSama v0.1.0
+        MangaSama<span v-if="version"> v{{ version }}</span>
       </footer>
     </main>
   </div>

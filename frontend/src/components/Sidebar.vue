@@ -14,6 +14,7 @@ onMounted(() => {
 <template>
   <aside
     class="flex w-60 shrink-0 flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+    aria-label="Barra laterale"
   >
     <div
       class="flex h-12 items-center gap-2 border-b border-slate-200 px-4 font-semibold dark:border-slate-800"
@@ -22,7 +23,7 @@ onMounted(() => {
       MangaSama
     </div>
 
-    <nav class="flex-1 space-y-1 overflow-y-auto p-2">
+    <nav class="flex-1 space-y-1 overflow-y-auto p-2" aria-label="Navigazione principale">
       <RouterLink to="/" class="nav-item" active-class="nav-active" exact-active-class="nav-active">
         <Home class="size-4" />
         Librerie

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, toRef, watch } from 'vue'
 import { Loader2, X } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSettingsStore } from '@/stores/settings'
+import { useModalA11y } from '@/composables/useModalA11y'
 import type { LibraryFolderStrategy, LibraryRead, LibraryType } from '@/types/api'
 
 const props = defineProps<{
@@ -18,6 +19,9 @@ const emit = defineEmits<{
 
 const libraries = useLibrariesStore()
 const settings = useSettingsStore()
+
+const panel = ref<HTMLElement | null>(null)
+useModalA11y(toRef(props, 'open'), panel, () => emit('close'))
 
 const TYPES: LibraryType[] = ['manga', 'manhua', 'manhwa']
 const STRATEGIES: LibraryFolderStrategy[] = [
@@ -136,6 +140,7 @@ async function submit(): Promise<void> {
       @click.self="emit('close')"
     >
       <form
+        ref="panel"
         class="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl dark:bg-slate-900"
         @submit.prevent="submit"
       >
@@ -150,8 +155,9 @@ async function submit(): Promise<void> {
 
         <div class="flex-1 space-y-4 overflow-y-auto p-5 text-sm">
           <div>
-            <label class="mb-1 block text-xs font-medium text-slate-500">Nome</label>
+            <label for="lib-name" class="mb-1 block text-xs font-medium text-slate-500">Nome</label>
             <input
+              id="lib-name"
               v-model="form.name"
               type="text"
               placeholder="es. Manga IT"
@@ -161,8 +167,9 @@ async function submit(): Promise<void> {
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">Tipo</label>
+              <label for="lib-type" class="mb-1 block text-xs font-medium text-slate-500">Tipo</label>
               <select
+                id="lib-type"
                 v-model="form.type"
                 class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
               >
@@ -170,8 +177,9 @@ async function submit(): Promise<void> {
               </select>
             </div>
             <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">Follow ogni (ore)</label>
+              <label for="lib-follow" class="mb-1 block text-xs font-medium text-slate-500">Follow ogni (ore)</label>
               <input
+                id="lib-follow"
                 v-model.number="form.follow_interval_hours"
                 type="number"
                 min="1"
@@ -183,8 +191,9 @@ async function submit(): Promise<void> {
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">Folder strategy</label>
+              <label for="lib-folder" class="mb-1 block text-xs font-medium text-slate-500">Folder strategy</label>
               <select
+                id="lib-folder"
                 v-model="form.folder_strategy"
                 class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
               >
@@ -192,8 +201,9 @@ async function submit(): Promise<void> {
               </select>
             </div>
             <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">Cover strategy</label>
+              <label for="lib-cover" class="mb-1 block text-xs font-medium text-slate-500">Cover strategy</label>
               <select
+                id="lib-cover"
                 v-model="form.cover_strategy"
                 class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
               >
@@ -203,8 +213,9 @@ async function submit(): Promise<void> {
           </div>
 
           <div>
-            <label class="mb-1 block text-xs font-medium text-slate-500">Root path</label>
+            <label for="lib-root" class="mb-1 block text-xs font-medium text-slate-500">Root path</label>
             <input
+              id="lib-root"
               v-model="form.root_path"
               type="text"
               placeholder="/data/manga_it"
@@ -233,8 +244,9 @@ async function submit(): Promise<void> {
           </div>
 
           <div>
-            <label class="mb-1 block text-xs font-medium text-slate-500">Qualità JPG</label>
+            <label for="lib-jpg" class="mb-1 block text-xs font-medium text-slate-500">Qualità JPG</label>
             <input
+              id="lib-jpg"
               v-model.number="form.jpg_quality"
               type="number"
               min="1"

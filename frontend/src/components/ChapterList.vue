@@ -54,12 +54,12 @@ async function onDownload(ch: ChapterListItem): Promise<void> {
         class="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-800/50"
       >
         <tr>
-          <th class="px-3 py-2 font-medium">Cap.</th>
-          <th class="px-3 py-2 font-medium">Titolo</th>
-          <th class="px-3 py-2 font-medium">Lingua</th>
-          <th class="px-3 py-2 font-medium">Pagine</th>
-          <th class="px-3 py-2 font-medium">CBZ</th>
-          <th class="px-3 py-2 font-medium">Azioni</th>
+          <th scope="col" class="px-3 py-2 font-medium">Cap.</th>
+          <th scope="col" class="px-3 py-2 font-medium">Titolo</th>
+          <th scope="col" class="px-3 py-2 font-medium">Lingua</th>
+          <th scope="col" class="px-3 py-2 font-medium">Pagine</th>
+          <th scope="col" class="px-3 py-2 font-medium">CBZ</th>
+          <th scope="col" class="px-3 py-2 font-medium">Azioni</th>
         </tr>
       </thead>
       <tbody>
@@ -93,9 +93,10 @@ async function onDownload(ch: ChapterListItem): Promise<void> {
               type="button"
               class="btn"
               title="Riscarica capitolo"
+              aria-label="Riscarica capitolo"
               @click="emit('redownload', ch.id)"
             >
-              <RotateCcw class="size-3.5" />
+              <RotateCcw class="size-3.5" aria-hidden="true" />
             </button>
           </td>
         </tr>

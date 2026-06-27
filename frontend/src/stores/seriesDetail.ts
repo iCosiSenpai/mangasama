@@ -16,6 +16,7 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
   const status: Ref<Status> = ref('idle')
   const chaptersStatus: Ref<Status> = ref('idle')
   const error: Ref<string | null> = ref(null)
+  const chaptersError: Ref<string | null> = ref(null)
   const backfilling: Ref<boolean> = ref(false)
   const refreshing: Ref<boolean> = ref(false)
 
@@ -34,6 +35,7 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
 
   async function loadChapters(id: number): Promise<void> {
     chaptersStatus.value = 'loading'
+    chaptersError.value = null
     try {
       const { data } = await client.get<ChapterListItem[]>('/api/chapters', {
         params: { series_id: id, limit: 500 },
@@ -41,7 +43,7 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
       chapters.value = data
       chaptersStatus.value = 'ready'
     } catch (e) {
-      error.value = apiError(e)
+      chaptersError.value = apiError(e)
       chaptersStatus.value = 'error'
     }
   }
@@ -89,6 +91,7 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
     status.value = 'idle'
     chaptersStatus.value = 'idle'
     error.value = null
+    chaptersError.value = null
   }
 
   return {
@@ -97,6 +100,7 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
     status,
     chaptersStatus,
     error,
+    chaptersError,
     backfilling,
     refreshing,
     load,

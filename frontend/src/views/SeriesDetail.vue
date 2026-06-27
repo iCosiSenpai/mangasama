@@ -6,13 +6,13 @@ import { toast } from 'vue-sonner'
 import { useSeriesDetailStore } from '@/stores/seriesDetail'
 import ChapterList from '@/components/ChapterList.vue'
 import AuthCoverImage from '@/components/AuthCoverImage.vue'
+import ErrorPanel from '@/components/ErrorPanel.vue'
 
 const route = useRoute()
 const router = useRouter()
 const store = useSeriesDetailStore()
 
 const backfillCount = ref(10)
-const coverError = ref(false)
 
 const seriesId = computed<number | null>(() => {
   const raw = route.params.id
@@ -171,7 +171,7 @@ async function onRefreshMetadata(): Promise<void> {
         </div>
         <div class="card space-y-3 p-4 text-sm">
           <AuthCoverImage
-            v-if="store.current.cover_path && !coverError"
+            v-if="store.current.cover_path"
             :src="`/api/covers/series/${store.current.id}`"
             :alt="store.current.title"
             img-class="mb-1 max-h-64 w-full rounded-md object-contain"
@@ -219,7 +219,13 @@ async function onRefreshMetadata(): Promise<void> {
           Aggiorna
         </button>
       </div>
+      <ErrorPanel
+        v-if="store.chaptersStatus === 'error'"
+        :message="store.chaptersError"
+        @retry="store.loadChapters(store.current.id)"
+      />
       <ChapterList
+        v-else
         :chapters="store.chapters"
         :loading="store.chaptersStatus === 'loading'"
         @redownload="onRedownload"

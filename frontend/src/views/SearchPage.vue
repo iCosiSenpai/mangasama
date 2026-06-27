@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { Search as SearchIcon } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { apiError } from '@/api/client'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSearchStore } from '@/stores/search'
 import { useSeriesStore } from '@/stores/series'
+import ErrorPanel from '@/components/ErrorPanel.vue'
 
 const libraries = useLibrariesStore()
 const search = useSearchStore()
@@ -27,6 +30,20 @@ async function run(): Promise<void> {
     query: ui.value.query.trim(),
   })
 }
+
+async function add(provider: string, externalId: string, title: string): Promise<void> {
+  if (!selectedLibrary.value) return
+  try {
+    await series.addFromCandidate({
+      libraryId: selectedLibrary.value.id,
+      provider,
+      externalId,
+    })
+    toast.success(`Aggiunta: ${title}`)
+  } catch (e) {
+    toast.error(apiError(e) || 'Aggiunta serie fallita')
+  }
+}
 </script>
 
 <template>
@@ -42,6 +59,7 @@ async function run(): Promise<void> {
       <select
         v-if="libraries.items.length > 1"
         v-model.number="ui.libraryId"
+        aria-label="Libreria di destinazione"
         class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
       >
         <option v-for="lib in libraries.items" :key="lib.id" :value="lib.id">
@@ -51,10 +69,12 @@ async function run(): Promise<void> {
       <div class="relative min-w-[12rem] flex-1">
         <SearchIcon
           class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+          aria-hidden="true"
         />
         <input
           v-model="ui.query"
           type="text"
+          aria-label="Termine di ricerca"
           placeholder="es. Berserk, Naruto, Solo Leveling..."
           class="w-full rounded-md border border-slate-200 bg-white py-2 pl-10 pr-3 text-sm dark:border-slate-700 dark:bg-slate-800"
         />
@@ -68,16 +88,15 @@ async function run(): Promise<void> {
       </button>
     </form>
 
-    <div v-if="search.status === 'loading'" class="text-sm text-slate-500">
+    <div v-if="search.status === 'loading'" class="text-sm text-slate-500" aria-live="polite">
       Ricerca in corso…
     </div>
 
-    <div
+    <ErrorPanel
       v-else-if="search.status === 'error'"
-      class="card p-4 text-rose-600 dark:text-rose-400"
-    >
-      {{ search.error }}
-    </div>
+      :message="search.error"
+      @retry="run"
+    />
 
     <div
       v-else-if="search.status === 'ready' && !search.hasResults"
@@ -120,13 +139,7 @@ async function run(): Promise<void> {
           type="button"
           class="btn-primary"
           :disabled="series.adding"
-          @click="
-            series.addFromCandidate({
-              libraryId: selectedLibrary.id,
-              provider: c.provider,
-              externalId: c.external_id,
-            })
-          "
+          @click="add(c.provider, c.external_id, c.title)"
         >
           Aggiungi a {{ selectedLibrary.name }}
         </button>

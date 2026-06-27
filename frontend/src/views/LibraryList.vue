@@ -5,6 +5,9 @@ import { client } from '@/api/client'
 import { useLibrariesStore } from '@/stores/libraries'
 import type { LibraryStats } from '@/types/api'
 import LibraryForm from '@/components/LibraryForm.vue'
+import ErrorPanel from '@/components/ErrorPanel.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import SkeletonCard from '@/components/SkeletonCard.vue'
 
 const store = useLibrariesStore()
 const ui = reactive({ creating: false })
@@ -55,30 +58,24 @@ onMounted(async () => {
       </button>
     </div>
 
-    <div v-if="store.status === 'loading'" class="text-sm text-slate-500">
-      Caricamento…
+    <div
+      v-if="store.status === 'loading'"
+      class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      <SkeletonCard :count="3" />
     </div>
 
-    <div
+    <ErrorPanel
       v-else-if="store.status === 'error'"
-      class="card p-4 text-rose-600 dark:text-rose-400"
-    >
-      <p>Errore: {{ store.error }}</p>
-      <button
-        type="button"
-        class="btn ml-2"
-        @click="store.reset(); void store.load(true)"
-      >
-        Riprova
-      </button>
-    </div>
+      :message="store.error"
+      @retry="store.reset(); void store.load(true)"
+    />
 
-    <div
+    <EmptyState
       v-else-if="!store.items.length"
-      class="card p-8 text-center text-slate-500"
-    >
-      Nessuna libreria. Clicca "Crea libreria" per iniziare.
-    </div>
+      title="Nessuna libreria"
+      message="Clicca &quot;Crea libreria&quot; per iniziare."
+    />
 
     <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <RouterLink
