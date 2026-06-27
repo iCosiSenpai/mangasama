@@ -20,12 +20,14 @@ Notes:
   forward-compat in case a mirror reappears. **MangaWorld.mx** is the de-facto Italian-first Tier-1.
 - **MangaDex** is multi-language; Italian comes from scanlation translations (we ask `it`, then `en`).
 - **Bato / MangaKakalot / MangaPark** are Cloudflare-fronted; without a solver they can fail health
-  checks and individual fetches → the orchestrator falls back to the next source. See
-  *Cloudflare* below.
+  checks and individual fetches → the orchestrator falls back to the next source. **No scraper is
+  implemented for these sources yet** — they stay `enabled: false` in `sources.yaml` until then.
+  See *Cloudflare* below.
 
 Per-scraper rate limits come from `config/default.yaml` (`scrapers.per_scraper.*`); the global
-default is `DEFAULT_RATE_LIMIT_RPM` (30). Tier-2 scrapers are toggled with env flags:
-`SCRAPER_MANGAPARK_ENABLED`, `SCRAPER_BATO_ENABLED`, `SCRAPER_MANGAKAKALOT_ENABLED`.
+default is `DEFAULT_RATE_LIMIT_RPM` (30). Optional sources are toggled with env flags (wired in
+`app/scrapers/source_policy.py`): `SCRAPER_MANGAPARK_ENABLED`, `SCRAPER_BATO_ENABLED`,
+`SCRAPER_MANGAKAKALOT_ENABLED`, `MANGAEDEN_ENABLED`.
 
 ## How domain selection + health works
 
@@ -68,5 +70,6 @@ means dropping a `BaseScraper` subclass into `app/scrapers/` (auto-discovered by
 
 If a domain returns a Cloudflare challenge the scraper raises `BlockedByCloudflare` and the
 orchestrator falls back to the next source. A solver can be wired via `CLOUDFLARE_SOLVER`
-(`playwright` or `flaresolverr`, with `FLARESOLVERR_URL`). *The solver dispatch itself is on the
-roadmap (not yet implemented); today CF-fronted domains simply fail over.*
+(`flaresolverr` is implemented; `playwright` is reserved). Set `FLARESOLVERR_URL` when using the
+optional FlareSolverr sidecar in `docker-compose.yml`. MangaWorld retries via FlareSolverr when
+configured and persists `cf_clearance` cookies under `/config/cookies/`.

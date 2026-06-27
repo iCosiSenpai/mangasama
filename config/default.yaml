@@ -13,7 +13,6 @@ library:
   default_cover_strategy: series_first
   default_providers:
     - mangaworld
-    - mangaeden
     - mangadex
   default_italian_priority: true
   default_follow_interval_hours: 24

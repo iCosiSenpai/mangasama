@@ -23,7 +23,8 @@ from sqlalchemy.orm import selectinload
 from app.core.exceptions import ConfigError, SeriesNotFoundDB
 from app.models.orm import Chapter, FollowLog, Library, Series, Volume
 from app.scrapers.base import BaseScraper, ScrapedChapter
-from app.scrapers.registry import get_scraper, get_scraper_registry
+from app.scrapers.registry import get_scraper
+from app.scrapers.source_policy import is_scraper_available
 from app.services.downloader import DownloadTask, _to_sort, enqueue_download
 from app.services.language_picker import select_chapters
 
@@ -57,9 +58,8 @@ def _pick_provider(series: Series) -> tuple[str, str]:
     """
     by_provider = {eid.provider: eid.external_id for eid in (series.external_ids or [])}
     order = list(series.source_priority or []) or list(series.library.providers or [])
-    registry = get_scraper_registry()
     for name in order:
-        if name in by_provider and registry.has(name):
+        if name in by_provider and is_scraper_available(name):
             return name, by_provider[name]
     raise ConfigError(
         f"series {series.id} has no usable provider (mapped: {sorted(by_provider)})"

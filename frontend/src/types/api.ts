@@ -57,6 +57,28 @@ export interface HealthSnapshot {
   providers: ProviderHealth[]
 }
 
+export interface FollowSummary {
+  series_id: number
+  library_id: number
+  title: string
+  followed_at: string | null
+  last_checked_at: string | null
+  last_status: string | null
+  last_new_chapters: number | null
+}
+
+export interface SettingsPatch {
+  log_level?: string
+  default_rate_limit_rpm?: number
+}
+
+export interface LibraryStats {
+  series_count: number
+  chapters_count: number
+  downloaded_chapters: number
+  total_bytes: number
+}
+
 export interface EffectiveSettings {
   app_name: string
   version: string

@@ -21,6 +21,7 @@ import httpx
 import structlog
 
 from app.scrapers.domain_registry import DomainRegistry
+from app.scrapers.source_policy import is_source_enabled
 from app.settings import get_settings
 
 logger = structlog.get_logger("mangasama.services.health")
@@ -59,7 +60,7 @@ async def check_all_domains(*, client: httpx.AsyncClient | None = None) -> dict:
     checked = healthy = failed = 0
     try:
         for source, cfg in registry.sources().items():
-            if not cfg.get("enabled", True):
+            if not is_source_enabled(source, registry=registry):
                 continue
             scheme = cfg.get("scheme", "https")
             path = cfg.get("health_check_path") or "/"

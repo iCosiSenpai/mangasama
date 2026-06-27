@@ -1,11 +1,11 @@
 import { ref, type Ref } from 'vue'
 import { defineStore } from 'pinia'
 import { apiError, client } from '@/api/client'
-import type { EffectiveSettings, HealthSnapshot } from '@/types/api'
+import type { EffectiveSettings, HealthSnapshot, SettingsPatch } from '@/types/api'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
-/** Read-only view of effective config + provider health for SettingsView. */
+/** Effective config + provider health for SettingsView. */
 export const useSettingsStore = defineStore('settings', () => {
   const effective: Ref<EffectiveSettings | null> = ref(null)
   const health: Ref<HealthSnapshot | null> = ref(null)
@@ -36,5 +36,30 @@ export const useSettingsStore = defineStore('settings', () => {
     return data
   }
 
-  return { effective, health, status, error, load, runBackup }
+  async function patchSettings(body: SettingsPatch): Promise<void> {
+    const { data } = await client.patch<EffectiveSettings>('/api/settings', body)
+    effective.value = data
+  }
+
+  async function runHealthCheck(): Promise<void> {
+    await client.post('/api/settings/providers/health/check')
+    await load()
+  }
+
+  async function resetProvider(source: string): Promise<void> {
+    await client.post(`/api/settings/providers/${source}/reset`)
+    await load()
+  }
+
+  return {
+    effective,
+    health,
+    status,
+    error,
+    load,
+    runBackup,
+    patchSettings,
+    runHealthCheck,
+    resetProvider,
+  }
 })

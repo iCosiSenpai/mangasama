@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { client } from '@/api/client'
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -24,9 +25,15 @@ export const router = createRouter({
       component: () => import('@/views/SearchPage.vue'),
     },
     {
+      path: '/follow',
+      name: 'follow',
+      component: () => import('@/views/FollowView.vue'),
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
+      meta: { public: true },
     },
     {
       path: '/jobs',
@@ -40,4 +47,16 @@ export const router = createRouter({
     },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
+})
+
+router.beforeEach(async (to) => {
+  if (to.meta.public) return true
+  try {
+    await client.get('/api/settings')
+    return true
+  } catch (e: unknown) {
+    const status = (e as { status?: number }).status
+    if (status === 401) return { name: 'login', query: { redirect: to.fullPath } }
+    return true
+  }
 })

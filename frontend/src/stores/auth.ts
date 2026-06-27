@@ -23,8 +23,17 @@ export const useAuthStore = defineStore('auth', () => {
     _apply(credential.value)
   }
 
-  function login(password: string): void {
+  async function login(password: string): Promise<void> {
     const cred = btoa(`admin:${password}`)
+    const prev = client.defaults.headers.common.Authorization
+    client.defaults.headers.common.Authorization = `Basic ${cred}`
+    try {
+      await client.get('/api/settings')
+    } catch (e) {
+      delete client.defaults.headers.common.Authorization
+      if (prev) client.defaults.headers.common.Authorization = prev
+      throw e
+    }
     credential.value = cred
     localStorage.setItem(STORAGE_KEY, cred)
     _apply(cred)

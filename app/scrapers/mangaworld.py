@@ -66,6 +66,7 @@ from app.core.exceptions import (
     SourceUnavailable,
 )
 from app.scrapers.base import BaseScraper, ScrapedChapter, ScrapedPage, ScrapedSeries
+from app.scrapers.cookies import CookieStore
 from app.scrapers.domain_registry import DomainRegistry
 from app.settings import get_settings
 
@@ -144,22 +145,45 @@ class MangaWorldScraper(BaseScraper):
     async def _get_html(self, url: str) -> str:
         """GET `url` and return the body as text. Raises on CF/5xx."""
         domain = urlparse(url).hostname or "www.mangaworld.mx"
+        cookie_store = CookieStore(self.name)
+        headers = self._cookie_header(cookie_store.load())
         try:
             return await self.http.get_text(
                 url,
                 scraper=self.name, domain=domain,
                 rpm=self._rpm(),
+                headers=headers or None,
             )
         except SourceUnavailable as e:
-            # MangaWorld behind Cloudflare — surface as BlockedByCloudflare
-            # so the orchestrator tries the next domain in `alternates`.
+            # MangaWorld behind Cloudflare — try solver, then surface as
+            # BlockedByCloudflare so the orchestrator tries the next source.
             status = e.status_code
             if status in (403, 503):
+                settings = get_settings()
+                if settings.cloudflare_solver:
+                    try:
+                        from app.scrapers.cloudflare import solve_page
+
+                        solved = await solve_page(url)
+                        if solved.cookies:
+                            cookie_store.save(solved.cookies)
+                        return solved.html
+                    except Exception as solve_err:
+                        logger.warning(
+                            "mangaworld.cf_solve_failed",
+                            url=url, error=str(solve_err),
+                        )
                 raise BlockedByCloudflare(
                     f"{url}: HTTP {status}",
                     source=self.name, url=url,
                 ) from e
             raise
+
+    @staticmethod
+    def _cookie_header(cookies: dict[str, str]) -> dict[str, str] | None:
+        if not cookies:
+            return None
+        return {"Cookie": "; ".join(f"{k}={v}" for k, v in cookies.items())}
 
     @staticmethod
     def _extract_id(url_or_id: str) -> str:

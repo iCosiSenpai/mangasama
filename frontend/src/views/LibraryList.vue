@@ -1,15 +1,42 @@
 <script setup lang="ts">
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { Plus } from 'lucide-vue-next'
+import { client } from '@/api/client'
 import { useLibrariesStore } from '@/stores/libraries'
+import type { LibraryStats } from '@/types/api'
 import LibraryForm from '@/components/LibraryForm.vue'
 
 const store = useLibrariesStore()
-
 const ui = reactive({ creating: false })
+const statsById = ref<Record<number, LibraryStats>>({})
 
-onMounted(() => {
-  void store.load()
+function fmtBytes(n: number): string {
+  if (!n) return '0 B'
+  const mb = n / (1024 * 1024)
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
+}
+
+async function loadStats(): Promise<void> {
+  const entries = await Promise.all(
+    store.items.map(async (lib) => {
+      try {
+        const { data } = await client.get<LibraryStats>(`/api/libraries/${lib.id}/stats`)
+        return [lib.id, data] as const
+      } catch {
+        return null
+      }
+    }),
+  )
+  const next: Record<number, LibraryStats> = {}
+  for (const e of entries) {
+    if (e) next[e[0]] = e[1]
+  }
+  statsById.value = next
+}
+
+onMounted(async () => {
+  await store.load(true)
+  await loadStats()
 })
 </script>
 
@@ -40,7 +67,7 @@ onMounted(() => {
       <button
         type="button"
         class="btn ml-2"
-        @click="store.reset(); void store.load()"
+        @click="store.reset(); void store.load(true)"
       >
         Riprova
       </button>
@@ -78,7 +105,9 @@ onMounted(() => {
           </div>
           <div>
             <div class="text-slate-500 dark:text-slate-400">Disk</div>
-            <div class="text-base font-semibold">—</div>
+            <div class="text-base font-semibold">
+              {{ statsById[lib.id] ? fmtBytes(statsById[lib.id].total_bytes) : '—' }}
+            </div>
           </div>
         </div>
 

@@ -1,11 +1,20 @@
 <script setup lang="ts">
-import { Download } from 'lucide-vue-next'
+import { ref } from 'vue'
+import { Download, RotateCcw } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { downloadAuthenticated } from '@/api/authFetch'
 import type { ChapterListItem } from '@/types/api'
 
 defineProps<{
   chapters: ChapterListItem[]
   loading?: boolean
 }>()
+
+const emit = defineEmits<{
+  (e: 'redownload', chapterId: number): void
+}>()
+
+const downloading = ref<number | null>(null)
 
 function fmtSize(bytes: number | null): string {
   if (!bytes) return '—'
@@ -17,6 +26,18 @@ function fmtDate(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString()
+}
+
+async function onDownload(ch: ChapterListItem): Promise<void> {
+  downloading.value = ch.id
+  try {
+    const name = `chapter-${ch.number}${ch.language ? `-${ch.language}` : ''}.cbz`
+    await downloadAuthenticated(`/api/chapters/${ch.id}/file`, name)
+  } catch {
+    toast.error('Download fallito')
+  } finally {
+    downloading.value = null
+  }
 }
 </script>
 
@@ -38,6 +59,7 @@ function fmtDate(iso: string | null): string {
           <th class="px-3 py-2 font-medium">Lingua</th>
           <th class="px-3 py-2 font-medium">Pagine</th>
           <th class="px-3 py-2 font-medium">CBZ</th>
+          <th class="px-3 py-2 font-medium">Azioni</th>
         </tr>
       </thead>
       <tbody>
@@ -53,15 +75,28 @@ function fmtDate(iso: string | null): string {
           <td class="px-3 py-2"><span class="chip uppercase">{{ ch.language }}</span></td>
           <td class="px-3 py-2 text-slate-500">{{ ch.pages_count ?? '—' }}</td>
           <td class="px-3 py-2">
-            <a
+            <button
               v-if="ch.downloaded_at"
-              :href="`/api/chapters/${ch.id}/file`"
-              class="inline-flex items-center gap-1 text-brand-600 hover:underline"
+              type="button"
+              class="inline-flex items-center gap-1 text-brand-600 hover:underline disabled:opacity-50"
+              :disabled="downloading === ch.id"
               :title="`${fmtSize(ch.cbz_size)} · ${fmtDate(ch.downloaded_at)}`"
+              @click="onDownload(ch)"
             >
               <Download class="size-3.5" /> {{ fmtSize(ch.cbz_size) }}
-            </a>
+            </button>
             <span v-else class="text-slate-400">—</span>
+          </td>
+          <td class="px-3 py-2">
+            <button
+              v-if="ch.downloaded_at"
+              type="button"
+              class="btn"
+              title="Riscarica capitolo"
+              @click="emit('redownload', ch.id)"
+            >
+              <RotateCcw class="size-3.5" />
+            </button>
           </td>
         </tr>
       </tbody>

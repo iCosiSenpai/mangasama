@@ -2,18 +2,27 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { BookMarked, LogIn } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
 import { useAuthStore } from '@/stores/auth'
+import { apiError } from '@/api/client'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const password = ref('')
+const loading = ref(false)
 
-function submit(): void {
-  if (!password.value) return
-  auth.login(password.value)
-  // The stored credential is now attached to axios; go to the app.
-  void router.push('/')
+async function submit(): Promise<void> {
+  if (!password.value || loading.value) return
+  loading.value = true
+  try {
+    await auth.login(password.value)
+    void router.push('/')
+  } catch (e) {
+    toast.error(apiError(e) || 'Password non valida')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -34,7 +43,7 @@ function submit(): void {
         placeholder="Password admin"
         class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
       />
-      <button type="submit" class="btn-primary mt-4 w-full justify-center" :disabled="!password">
+      <button type="submit" class="btn-primary mt-4 w-full justify-center" :disabled="!password || loading">
         <LogIn class="size-4" />
         Accedi
       </button>

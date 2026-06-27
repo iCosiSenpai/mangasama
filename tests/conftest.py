@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
@@ -24,8 +25,15 @@ def _env():
     from this URL and disposed by the `_http_client` fixture below.
     """
     tmp = Path(tempfile.mkdtemp(prefix="mangasama-test-"))
-    os.environ["DATA_DIR"] = str(tmp / "data")
-    os.environ["CONFIG_DIR"] = str(tmp / "config")
+    data_dir = tmp / "data"
+    config_dir = tmp / "config"
+    config_dir.mkdir(parents=True)
+    for name in ("default.yaml", "sources.yaml", "logging.yaml"):
+        src = ROOT / "config" / name
+        if src.exists():
+            shutil.copy(src, config_dir / name)
+    os.environ["DATA_DIR"] = str(data_dir)
+    os.environ["CONFIG_DIR"] = str(config_dir)
     os.environ["AUTH_ENABLED"] = "false"
     os.environ["CLOUDFLARE_SOLVER"] = ""
     # Invalidate the lru_cache on Settings so the new DATA_DIR takes effect.

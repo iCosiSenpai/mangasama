@@ -1,28 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { Calendar, Hash, Languages } from 'lucide-vue-next'
 import type { SeriesListItem } from '@/types/api'
 import FollowButton from './FollowButton.vue'
+import AuthCoverImage from './AuthCoverImage.vue'
 
 const props = defineProps<{ series: SeriesListItem }>()
-
-const imgError = ref(false)
 </script>
 
 <template>
   <div class="card flex flex-col p-4 transition-colors hover:border-brand-500">
     <RouterLink
-      v-if="props.series.cover_path && !imgError"
+      v-if="props.series.cover_path"
       :to="`/series/${series.id}`"
       class="mb-3 block overflow-hidden rounded-md"
     >
-      <img
+      <AuthCoverImage
         :src="`/api/covers/series/${series.id}`"
         :alt="series.title"
-        loading="lazy"
-        class="h-44 w-full object-cover"
-        @error="imgError = true"
+        img-class="h-44 w-full object-cover"
       />
     </RouterLink>
 

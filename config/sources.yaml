@@ -75,9 +75,9 @@ sources:
     selector_check: title
     requires_browser: false
     requires_cookie: false
-    enabled: true
+    enabled: false   # No scraper yet; enable when implemented.
     content_types: [manga, manhua, manhwa]
-    notes: Multi-language scanlation community. Cloudflare-fronted.
+    notes: Multi-language scanlation community. Cloudflare-fronted. Scraper not implemented.
   mangakakalot:
     display_name: MangaKakalot
     tier: 2
@@ -90,6 +90,6 @@ sources:
     selector_check: title
     requires_browser: false
     requires_cookie: false
-    enabled: true
+    enabled: false   # No scraper yet; enable when implemented.
     content_types: [manga]
-    notes: English-first fallback. Mirror at manganato.com.
+    notes: English-first fallback. Mirror at manganato.com. Scraper not implemented.

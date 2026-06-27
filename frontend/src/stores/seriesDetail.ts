@@ -78,6 +78,11 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
     }
   }
 
+  async function redownloadChapter(chapterId: number, seriesId: number): Promise<void> {
+    await client.post(`/api/chapters/${chapterId}/redownload`)
+    window.setTimeout(() => void loadChapters(seriesId), 3000)
+  }
+
   function reset(): void {
     current.value = null
     chapters.value = []
@@ -99,6 +104,7 @@ export const useSeriesDetailStore = defineStore('seriesDetail', () => {
     toggleFollow,
     backfill,
     refreshMetadata,
+    redownloadChapter,
     reset,
   }
 })

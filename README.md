@@ -6,7 +6,7 @@
 
 **Features**
 
-- 🌍 **Multi-source, Italian-first**: MangaWorld + MangaDex (Italian scanlations) as Tier 1, plus international fallbacks (Bato.to, MangaKakalot; MangaPark opt-in). (MangaEden is kept for forward-compat but disabled — its domain is defunct.) See [docs/sources.md](docs/sources.md).
+- 🌍 **Multi-source, Italian-first**: **MangaWorld** (IT) + **MangaDex** (IT scanlations) as active scrapers; Tier-2 sources (Bato, MangaKakalot, MangaPark) are registered in config for future scrapers. See [docs/sources.md](docs/sources.md).
 - ⭐ **Follow / Like** series and have new chapters auto-downloaded.
 - 📚 **Multi-library**: separate libraries for different content types or organisations; each library has its own root path, source priority, and folder strategy.
 - 📦 **CBZ with ComicInfo.xml v2.1** embedded — works with Komga, Kavita, YACReader, Moon+ Reader.
@@ -68,7 +68,7 @@ Browser ──► FastAPI (Vue 3 SPA served from /)
              ├── APScheduler ─── follow_check, domain_health, cleanup
              ├── DownloadQueue ── N asyncio workers ─► CbzPackager
              │
-             ├── Scrapers:  MangaDex, MangaEden, MangaWorld, MangaPark, Bato, MangaKakalot
+             ├── Scrapers:  MangaDex, MangaWorld (+ Bato/MangaKakalot/MangaPark planned)
              ├── Metadata:  AniList (GraphQL), MangaDex, GoogleBooks (dormant)
              └── SQLite (libraries, series, volumes, chapters, pages, jobs, ...)
 ```
@@ -124,7 +124,7 @@ mangasama/
 │   ├── db/               # session + init
 │   ├── models/           # SQLAlchemy 2.0 ORM
 │   ├── schemas/          # Pydantic v2
-│   ├── scrapers/         # Base + 6 concrete scrapers
+│   ├── scrapers/         # Base + MangaDex + MangaWorld (tier-2 planned)
 │   ├── metadata/         # AniList, MangaDex, GoogleBooks
 │   ├── services/         # CBZ builder, follow, OPDS, ...
 │   ├── scheduler/        # APScheduler jobs
@@ -138,9 +138,9 @@ mangasama/
 
 ## Roadmap
 
-v1 ships: MangaDex + MangaEden + MangaWorld (Tier 1) and MangaPark + Bato + MangaKakalot (Tier 2), AniList + MangaDex metadata, follow scheduler, CBZ+ComicInfo, OPDS, Vue 3 UI, Docker.
+**v0.1.0** ships: MangaDex + MangaWorld scrapers, FlareSolverr Cloudflare bypass, AniList + MangaDex metadata, follow scheduler, CBZ+ComicInfo, OPDS, Vue 3 UI, Docker with auto-seeded `/config`.
 
-Future: light novels (Google Books), western comics (ComicVine), multi-user auth, MangaPark Tier-1 promotion after cookie handling stabilises.
+**Planned**: Bato + MangaKakalot + MangaPark scrapers, Playwright CF solver, light novels (Google Books), multi-user auth.
 
 ## License
 

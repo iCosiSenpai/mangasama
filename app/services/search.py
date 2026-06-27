@@ -20,7 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import LibraryNotFound
 from app.models.orm import Library
 from app.schemas.search import SearchCandidate, SearchRequest, SearchResponse
-from app.scrapers.registry import get_scraper, get_scraper_registry
+from app.scrapers.registry import get_scraper
+from app.scrapers.source_policy import is_scraper_available
 
 logger = structlog.get_logger("mangasama.services.search")
 
@@ -37,9 +38,8 @@ async def multi_source_search(
 
     # Provider resolution: explicit list wins; otherwise library.providers.
     candidates = req.providers if req.providers is not None else list(lib.providers)
-    # Keep only known providers.
-    registry = get_scraper_registry()
-    providers = [name for name in candidates if registry.has(name)]
+    # Keep only known, enabled providers.
+    providers = [name for name in candidates if is_scraper_available(name)]
     if not providers:
         return SearchResponse(
             query=req.query,

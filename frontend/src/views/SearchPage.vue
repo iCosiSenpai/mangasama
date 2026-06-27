@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Search as SearchIcon } from 'lucide-vue-next'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSearchStore } from '@/stores/search'
@@ -9,18 +9,21 @@ const libraries = useLibrariesStore()
 const search = useSearchStore()
 const series = useSeriesStore()
 
-const ui = ref({ query: '' })
+const ui = ref({ query: '', libraryId: 0 })
+
+const selectedLibrary = computed(() =>
+  libraries.items.find((l) => l.id === ui.value.libraryId) ?? libraries.items[0] ?? null,
+)
 
 onMounted(async () => {
   await libraries.load()
+  if (libraries.items.length) ui.value.libraryId = libraries.items[0].id
 })
 
 async function run(): Promise<void> {
-  if (!ui.value.query.trim()) return
-  if (!libraries.items.length) return
-  // Use the first library as a default target. Users can refine in the dialog.
+  if (!ui.value.query.trim() || !selectedLibrary.value) return
   await search.run({
-    libraryId: libraries.items[0].id,
+    libraryId: selectedLibrary.value.id,
     query: ui.value.query.trim(),
   })
 }
@@ -35,8 +38,17 @@ async function run(): Promise<void> {
       </p>
     </div>
 
-    <form class="mb-6 flex gap-2" @submit.prevent="run">
-      <div class="relative flex-1">
+    <form class="mb-6 flex flex-wrap gap-2" @submit.prevent="run">
+      <select
+        v-if="libraries.items.length > 1"
+        v-model.number="ui.libraryId"
+        class="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+      >
+        <option v-for="lib in libraries.items" :key="lib.id" :value="lib.id">
+          {{ lib.name }}
+        </option>
+      </select>
+      <div class="relative min-w-[12rem] flex-1">
         <SearchIcon
           class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
         />
@@ -50,7 +62,7 @@ async function run(): Promise<void> {
       <button
         type="submit"
         class="btn-primary"
-        :disabled="search.status === 'loading' || !ui.query.trim()"
+        :disabled="search.status === 'loading' || !ui.query.trim() || !selectedLibrary"
       >
         Cerca
       </button>
@@ -104,18 +116,19 @@ async function run(): Promise<void> {
           </p>
         </div>
         <button
+          v-if="selectedLibrary"
           type="button"
           class="btn-primary"
-          :disabled="series.adding || !libraries.items.length"
+          :disabled="series.adding"
           @click="
             series.addFromCandidate({
-              libraryId: libraries.items[0].id,
+              libraryId: selectedLibrary.id,
               provider: c.provider,
               externalId: c.external_id,
             })
           "
         >
-          Aggiungi a {{ libraries.items[0]?.name }}
+          Aggiungi a {{ selectedLibrary.name }}
         </button>
       </li>
     </ul>

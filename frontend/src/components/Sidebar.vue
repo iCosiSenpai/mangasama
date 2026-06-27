@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { BookMarked, Briefcase, Library, Search, Settings } from 'lucide-vue-next'
+import { BookMarked, Briefcase, Heart, Home, Library, Search, Settings } from 'lucide-vue-next'
 import { useLibrariesStore } from '@/stores/libraries'
 import ProviderStatusBadge from './ProviderStatusBadge.vue'
 
@@ -23,6 +23,11 @@ onMounted(() => {
     </div>
 
     <nav class="flex-1 space-y-1 overflow-y-auto p-2">
+      <RouterLink to="/" class="nav-item" active-class="nav-active" exact-active-class="nav-active">
+        <Home class="size-4" />
+        Librerie
+      </RouterLink>
+
       <RouterLink
         v-for="lib in store.items"
         :key="lib.id"
@@ -42,6 +47,10 @@ onMounted(() => {
       <RouterLink to="/search" class="nav-item" active-class="nav-active">
         <Search class="size-4" />
         Cerca
+      </RouterLink>
+      <RouterLink to="/follow" class="nav-item" active-class="nav-active">
+        <Heart class="size-4" />
+        Seguiti
       </RouterLink>
       <RouterLink to="/jobs" class="nav-item" active-class="nav-active">
         <Briefcase class="size-4" />

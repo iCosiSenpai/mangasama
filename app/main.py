@@ -37,16 +37,18 @@ from app.settings import get_settings
 
 logger = get_logger("mangasama.main")
 
-# Track app start time for /api/health uptime.
+# Track app start time and DB init status for /api/health.
 _started_at: float = 0.0
+_db_ok: bool = True
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan: init/teardown."""
-    global _started_at
+    global _started_at, _db_ok
     settings = get_settings()
     _started_at = time.time()
+    _db_ok = True
 
     configure_logging(level=settings.log_level, config_path=settings.config_dir / "logging.yaml")
     logger.info(
@@ -73,8 +75,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         from app.db.init import init_db
         await init_db()
     except Exception as e:
+        _db_ok = False
         logger.error("mangasama.db_init_failed", error=str(e))
-        # Don't kill startup — surface the error in /api/health.
 
     # Shared HTTP client for all scrapers + metadata providers.
     try:
@@ -214,12 +216,13 @@ def create_app() -> FastAPI:
         uptime = time.time() - _started_at if _started_at else 0.0
         return JSONResponse(
             {
-                "status": "ok",
+                "status": "ok" if _db_ok else "degraded",
                 "app": settings.app_name,
                 "version": __version__,
                 "uptime_seconds": round(uptime, 2),
                 "data_dir": str(settings.data_dir),
                 "config_dir": str(settings.config_dir),
+                "db_ok": _db_ok,
             }
         )
 

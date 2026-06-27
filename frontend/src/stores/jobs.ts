@@ -1,6 +1,7 @@
 import { computed, ref, type Ref } from 'vue'
 import { defineStore } from 'pinia'
 import { apiError, client } from '@/api/client'
+import { authHeaders } from '@/api/authFetch'
 import type { JobEvent, JobRead } from '@/types/api'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
@@ -19,7 +20,7 @@ export const useJobsStore = defineStore('jobs', () => {
   const error: Ref<string | null> = ref(null)
   const streaming: Ref<boolean> = ref(false)
 
-  let es: EventSource | null = null
+  let abortController: AbortController | null = null
 
   const runningCount = computed(
     () => items.value.filter((j) => j.status === 'running' || j.status === 'pending').length,
@@ -68,30 +69,54 @@ export const useJobsStore = defineStore('jobs', () => {
     }
   }
 
-  function connect(): void {
-    if (es) return
-    es = new EventSource('/api/jobs/stream')
-    es.onopen = () => {
-      streaming.value = true
-    }
-    es.onmessage = (msg: MessageEvent<string>) => {
-      try {
-        _upsert(JSON.parse(msg.data) as JobEvent)
-      } catch {
-        // Ignore keepalive/comment frames that aren't JSON `data:` lines.
+  async function _readStream(): Promise<void> {
+    abortController = new AbortController()
+    try {
+      const res = await fetch('/api/jobs/stream', {
+        headers: authHeaders({ Accept: 'text/event-stream' }),
+        signal: abortController.signal,
+      })
+      if (!res.ok || !res.body) {
+        streaming.value = false
+        return
       }
-    }
-    es.onerror = () => {
-      // The browser auto-reconnects; just reflect the transient state.
+      streaming.value = true
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const frames = buffer.split('\n\n')
+        buffer = frames.pop() ?? ''
+        for (const frame of frames) {
+          for (const line of frame.split('\n')) {
+            if (!line.startsWith('data: ')) continue
+            try {
+              _upsert(JSON.parse(line.slice(6)) as JobEvent)
+            } catch {
+              // ignore keepalive / malformed frames
+            }
+          }
+        }
+      }
+    } catch {
+      // aborted or network drop — caller may reconnect
+    } finally {
       streaming.value = false
+      abortController = null
     }
   }
 
+  function connect(): void {
+    if (abortController) return
+    void _readStream()
+  }
+
   function disconnect(): void {
-    if (es) {
-      es.close()
-      es = null
-    }
+    abortController?.abort()
+    abortController = null
     streaming.value = false
   }
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from app.db.session import session_scope
 from app.main import create_app
@@ -60,12 +61,18 @@ async def test_provider_health_empty(client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_reset_provider_health(client: AsyncClient) -> None:
-    # Seed an unhealthy mangadex domain, then reset it via the admin endpoint.
+    # Mark an unhealthy mangadex domain (seeded by init_db), then reset via API.
     async with session_scope() as s:
-        s.add(DomainHealth(
-            source="mangadex", domain="api.mangadex.org",
-            healthy=False, fail_count=5,
-        ))
+        row = (
+            await s.execute(
+                select(DomainHealth).where(
+                    DomainHealth.source == "mangadex",
+                    DomainHealth.domain == "api.mangadex.org",
+                )
+            )
+        ).scalar_one()
+        row.healthy = False
+        row.fail_count = 5
 
     r = await client.post("/api/settings/providers/mangadex/reset")
     assert r.status_code == 200, r.text

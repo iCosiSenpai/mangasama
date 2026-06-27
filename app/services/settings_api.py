@@ -18,6 +18,7 @@ from app.schemas.settings_api import (
     ProviderHealth,
 )
 from app.scrapers.registry import get_scraper_registry
+from app.scrapers.source_policy import enabled_scraper_names
 from app.settings import Settings, get_settings
 
 logger = structlog.get_logger("mangasama.services.settings")
@@ -27,10 +28,8 @@ def get_effective_settings() -> EffectiveSettings:
     s: Settings = get_settings()
     registry = get_scraper_registry()
     known = registry.names()
-    # A scraper is "enabled" if it shows up in `library_defaults()`'s
-    # default provider list — that's the only signal we expose today.
+    enabled = enabled_scraper_names()
     defaults = s.library_defaults()
-    enabled = [name for name in known if name in defaults.get("default_providers", [])]
     return EffectiveSettings(
         app_name=s.app_name,
         version=__version__,

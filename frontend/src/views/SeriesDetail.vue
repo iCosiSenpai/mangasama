@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Heart, RefreshCw } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { useSeriesDetailStore } from '@/stores/seriesDetail'
 import ChapterList from '@/components/ChapterList.vue'
+import AuthCoverImage from '@/components/AuthCoverImage.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,6 +61,16 @@ async function onBackfill(): Promise<void> {
     toast.success(`Backfill avviato: ${scheduled} capitoli in coda`)
   } catch {
     toast.error('Backfill fallito')
+  }
+}
+
+async function onRedownload(chapterId: number): Promise<void> {
+  if (seriesId.value == null) return
+  try {
+    await store.redownloadChapter(chapterId, seriesId.value)
+    toast.success('Riscaricamento avviato')
+  } catch {
+    toast.error('Riscarica fallita')
   }
 }
 
@@ -159,13 +170,11 @@ async function onRefreshMetadata(): Promise<void> {
           </p>
         </div>
         <div class="card space-y-3 p-4 text-sm">
-          <img
+          <AuthCoverImage
             v-if="store.current.cover_path && !coverError"
             :src="`/api/covers/series/${store.current.id}`"
             :alt="store.current.title"
-            loading="lazy"
-            class="mb-1 max-h-64 w-full rounded-md object-contain"
-            @error="coverError = true"
+            img-class="mb-1 max-h-64 w-full rounded-md object-contain"
           />
           <div v-if="authorsByRole.length">
             <h3 class="text-xs font-semibold uppercase text-slate-500">Autori</h3>
@@ -213,6 +222,7 @@ async function onRefreshMetadata(): Promise<void> {
       <ChapterList
         :chapters="store.chapters"
         :loading="store.chaptersStatus === 'loading'"
+        @redownload="onRedownload"
       />
     </template>
   </div>

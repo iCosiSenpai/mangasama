@@ -24,17 +24,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import LibraryNotFound
 from app.models.orm import Chapter, Library, Series, Volume
 from app.schemas.library import LibraryCreate, LibraryStats, LibraryUpdate
-from app.scrapers.registry import get_scraper_registry
+from app.scrapers.source_policy import is_scraper_available
 
 # ----------------------------------------------------------------- helpers
 
 
 def _validate_providers(providers: Sequence[str] | None) -> None:
-    """Reject providers that the registry doesn't know about."""
+    """Reject providers that are not registered and enabled."""
     if not providers:
         return
-    registry = get_scraper_registry()
-    unknown = [p for p in providers if not registry.has(p)]
+    unknown = [p for p in providers if not is_scraper_available(p)]
     if unknown:
         raise ValueError(f"unknown providers: {unknown!r}")
 

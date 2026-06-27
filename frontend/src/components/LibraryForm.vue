@@ -26,6 +26,7 @@ const STRATEGIES: LibraryFolderStrategy[] = [
   'chapter_flat',
   'onefile_per_volume',
 ]
+const COVER_STRATEGIES = ['series_first', 'volume_first', 'chapter_first'] as const
 
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -39,6 +40,7 @@ function blank() {
     type: 'manga' as LibraryType,
     root_path: '',
     folder_strategy: 'series_volume_chapter' as LibraryFolderStrategy,
+    cover_strategy: 'series_first',
     providers: [] as string[],
     italian_priority: true,
     follow_interval_hours: 24,
@@ -58,6 +60,7 @@ function hydrate(): void {
       type: props.library.type,
       root_path: props.library.root_path,
       folder_strategy: props.library.folder_strategy,
+      cover_strategy: props.library.cover_strategy,
       providers: [...props.library.providers],
       italian_priority: props.library.italian_priority,
       follow_interval_hours: props.library.follow_interval_hours,
@@ -102,6 +105,7 @@ async function submit(): Promise<void> {
       type: form.type,
       root_path: form.root_path.trim(),
       folder_strategy: form.folder_strategy,
+      cover_strategy: form.cover_strategy,
       providers: [...form.providers],
       italian_priority: form.italian_priority,
       follow_interval_hours: form.follow_interval_hours,
@@ -166,12 +170,34 @@ async function submit(): Promise<void> {
               </select>
             </div>
             <div>
+              <label class="mb-1 block text-xs font-medium text-slate-500">Follow ogni (ore)</label>
+              <input
+                v-model.number="form.follow_interval_hours"
+                type="number"
+                min="1"
+                max="8760"
+                class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+              />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
               <label class="mb-1 block text-xs font-medium text-slate-500">Folder strategy</label>
               <select
                 v-model="form.folder_strategy"
                 class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
               >
                 <option v-for="s in STRATEGIES" :key="s" :value="s">{{ s }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="mb-1 block text-xs font-medium text-slate-500">Cover strategy</label>
+              <select
+                v-model="form.cover_strategy"
+                class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+              >
+                <option v-for="s in COVER_STRATEGIES" :key="s" :value="s">{{ s }}</option>
               </select>
             </div>
           </div>
@@ -206,27 +232,15 @@ async function submit(): Promise<void> {
             <p v-else class="text-xs text-slate-500">Nessuno scraper disponibile.</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-3">
-            <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">Follow ogni (ore)</label>
-              <input
-                v-model.number="form.follow_interval_hours"
-                type="number"
-                min="1"
-                max="8760"
-                class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-xs font-medium text-slate-500">Qualità JPG</label>
-              <input
-                v-model.number="form.jpg_quality"
-                type="number"
-                min="1"
-                max="100"
-                class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
-              />
-            </div>
+          <div>
+            <label class="mb-1 block text-xs font-medium text-slate-500">Qualità JPG</label>
+            <input
+              v-model.number="form.jpg_quality"
+              type="number"
+              min="1"
+              max="100"
+              class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 dark:border-slate-700 dark:bg-slate-800"
+            />
           </div>
 
           <label class="flex items-center gap-2">
