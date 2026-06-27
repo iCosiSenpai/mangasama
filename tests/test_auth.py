@@ -1,4 +1,4 @@
-"""Tests for the optional HTTP Basic auth gate."""
+"""Tests for the HTTP Basic auth gate (active after first-run setup)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import base64
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from app.core import setup_state
 from app.main import create_app
 from app.settings import get_settings
 
@@ -15,12 +16,22 @@ def _basic(user: str, pw: str) -> str:
     return "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode()
 
 
+TEST_PASSWORD = "verysecret"
+
+
+def _write_test_admin(config_dir: str, username: str = "admin", password: str = TEST_PASSWORD) -> None:
+    setup_state.write_admin(username, password)
+
+
 @pytest.fixture
-async def auth_client(monkeypatch):
-    """An app instance with AUTH_ENABLED=true and a known admin password."""
-    monkeypatch.setenv("AUTH_ENABLED", "true")
-    monkeypatch.setenv("ADMIN_PASSWORD", "secret")
+async def auth_client(monkeypatch, tmp_path):
+    """An app instance with a completed setup and a known admin password."""
+    config_dir = tmp_path / "config"
+    monkeypatch.setenv("CONFIG_DIR", str(config_dir))
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     get_settings.cache_clear()
+    # Create the admin account file before booting the app.
+    _write_test_admin(str(config_dir), "admin", TEST_PASSWORD)
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
@@ -36,7 +47,7 @@ async def test_api_requires_auth(auth_client: AsyncClient) -> None:
 
 @pytest.mark.asyncio
 async def test_api_with_correct_password(auth_client: AsyncClient) -> None:
-    r = await auth_client.get("/api/libraries", headers={"Authorization": _basic("admin", "secret")})
+    r = await auth_client.get("/api/libraries", headers={"Authorization": _basic("admin", TEST_PASSWORD)})
     assert r.status_code == 200
 
 
@@ -53,29 +64,42 @@ async def test_health_is_public(auth_client: AsyncClient) -> None:
 
 
 @pytest.mark.asyncio
+async def test_setup_is_public(auth_client: AsyncClient) -> None:
+    # /api/setup/status stays public even after setup, and /api/setup is
+    # unavailable once completed.
+    r = await auth_client.get("/api/setup/status")
+    assert r.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_opds_requires_auth(auth_client: AsyncClient) -> None:
     r = await auth_client.get("/opds/v1.2/root")
     assert r.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_auth_disabled_allows_all() -> None:
-    # Default env (conftest sets AUTH_ENABLED=false): no gate.
+async def test_no_setup_allows_all(monkeypatch, tmp_path) -> None:
+    # Default env with no admin.json: no gate, public API.
+    monkeypatch.setenv("CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     get_settings.cache_clear()
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         r = await ac.get("/api/libraries")
     assert r.status_code == 200
+    get_settings.cache_clear()
 
 
 @pytest.fixture
-async def lockout_client(monkeypatch):
-    """Auth enabled with a low failure threshold to exercise the lockout."""
-    monkeypatch.setenv("AUTH_ENABLED", "true")
-    monkeypatch.setenv("ADMIN_PASSWORD", "secret")
+async def lockout_client(monkeypatch, tmp_path):
+    """Setup completed with a low failure threshold to exercise the lockout."""
+    config_dir = tmp_path / "config"
+    monkeypatch.setenv("CONFIG_DIR", str(config_dir))
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("AUTH_MAX_FAILURES", "3")
     monkeypatch.setenv("AUTH_LOCKOUT_SECONDS", "60")
     get_settings.cache_clear()
+    _write_test_admin(str(config_dir), "admin", TEST_PASSWORD)
     app = create_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
@@ -105,6 +129,6 @@ async def test_headerless_requests_do_not_count_toward_lockout(
         assert r.status_code == 401
     # A correct password still works (no lockout accrued).
     r = await lockout_client.get(
-        "/api/libraries", headers={"Authorization": _basic("admin", "secret")}
+        "/api/libraries", headers={"Authorization": _basic("admin", TEST_PASSWORD)}
     )
     assert r.status_code == 200

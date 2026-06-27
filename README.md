@@ -33,7 +33,8 @@ desktop.
 ## Quick start (Docker Compose)
 
 You only need **Docker** with the **Compose** plugin. The image is published to GitHub Container
-Registry, so there's nothing to clone. Create an empty folder, and save this as `docker-compose.yml`:
+Registry, so there's nothing to clone. Create an empty folder, save the compose file below as
+`docker-compose.yml`, and adapt the bind mounts to your host folders:
 
 ```yaml
 services:
@@ -44,15 +45,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - mangasama-data:/data        # database + your downloaded CBZ library
-      - mangasama-config:/config    # config, cookie cache, backups
+      - mangasama-data:/data        # SQLite DB + covers + default downloads
+      - mangasama-config:/config    # runtime settings + cookies + backups
+      # Add one bind mount per manga folder; pick these paths as library root paths during setup.
+      - /volume1/manga:/libraries/manga:rw
+      # - /volume1/manhwa:/libraries/manhwa:rw
     environment:
       - TZ=Europe/Rome
-      # --- Optional: require a login (recommended if others can reach this host) ---
-      # - AUTH_ENABLED=true
-      # - ADMIN_PASSWORD=change-me
-      # --- Optional: daily database backup to /config/backups ---
-      # - BACKUP_ENABLED=true
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=5).status==200 else 1)"]
       interval: 60s
@@ -71,8 +70,9 @@ Then start it:
 docker compose up -d
 ```
 
-Open **<http://localhost:8000>** (or `http://<NAS-IP>:8000` from another device) — create a library,
-search a series, and click **Follow**.
+Open **<http://localhost:8000>** (or `http://<NAS-IP>:8000` from another device). On the first run
+MangaSama shows a setup wizard: create the admin account and add one or more libraries pointing to
+the mounted folders (e.g. `/libraries/manga`).
 
 ### Everyday commands
 
@@ -84,22 +84,21 @@ docker compose stop                             # stop (keeps everything)
 docker compose down                             # remove the container (data volumes are kept)
 ```
 
-### Make your library visible on disk (optional)
+### Multiple libraries / multiple host folders
 
-By default files live in Docker-managed volumes (`mangasama-data` = DB + your CBZ library,
-`mangasama-config` = config/cookies/backups). To keep the downloaded manga in a **normal folder you
-can browse** (e.g. a Komga/Kavita share), replace the `volumes:` block with bind mounts:
+Add as many bind mounts as you need, each with a distinct in-container path:
 
 ```yaml
     volumes:
-      - /volume1/manga:/data                 # host folder : container (Synology example)
-      - /volume1/docker/mangasama:/config
+      - mangasama-data:/data
+      - mangasama-config:/config
+      - /volume1/manga:/libraries/manga:rw
+      - /volume1/manhwa:/libraries/manhwa:rw
+      - /volume1/completed:/libraries/completed:rw
 ```
 
-Windows: `C:/Users/you/Manga:/data` · macOS: `/Users/you/Manga:/data`. Then set each library's
-**Root path** to a subfolder of `/data` (e.g. `/data/manga_it`) in the UI, and the CBZ files appear
-right in that host folder. Make sure the host folder is writable by user/group ID **1000** (the
-container's user).
+Then create a library in the UI for each mounted path. The setup wizard lets you add several
+folders at once.
 
 ### Build from source (optional)
 
@@ -118,15 +117,16 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 1. Create a folder on the NAS (e.g. `/volume1/docker/mangasama`) and upload `docker-compose.yml`
    into it with File Station.
 2. **Container Manager ▸ Project ▸ Create**, point it at that folder, and start — it pulls the image.
-3. Open `http://<NAS-IP>:8000`. For a visible library folder, use the bind-mount override above.
+3. Open `http://<NAS-IP>:8000` and complete the setup wizard. Map your manga shares as bind mounts
+   in the compose (e.g. `/volume1/manga:/libraries/manga`).
 
 ### QNAP (Container Station)
 Container Station ▸ **Applications ▸ Create**, paste the contents of `docker-compose.yml` (and your
-override), then start — it pulls the image. Browse to `http://<NAS-IP>:8000`.
+override), then start — it pulls the image. Browse to `http://<NAS-IP>:8000` and complete setup.
 
 ### Unraid
-Use the **Compose Manager** plugin: add a new stack, paste `docker-compose.yml`, and start. Map the
-volumes to your array shares (e.g. `/mnt/user/manga:/data`) for visible files.
+Use the **Compose Manager** plugin: add a new stack, paste `docker-compose.yml`, and start. Map each
+share as a separate bind mount (e.g. `/mnt/user/manga:/libraries/manga`, `/mnt/user/manhwa:/libraries/manhwa`).
 
 > The published image is **multi-arch** (`linux/amd64` + `linux/arm64`), so it runs on Intel/AMD
 > NAS and desktops as well as ARM boards (e.g. ARM Synology models, Raspberry Pi).
@@ -134,85 +134,63 @@ volumes to your array shares (e.g. `/mnt/user/manga:/data`) for visible files.
 ### Windows / macOS (Docker Desktop)
 Install **Docker Desktop**, create a folder with the `docker-compose.yml` from *Quick start*, then run
 `docker compose up -d` in a terminal (PowerShell on Windows, Terminal on macOS) inside that folder.
+Open `http://localhost:8000` and complete the setup wizard.
 
 ### Linux desktop / server
 Install Docker Engine + the Compose plugin, save the `docker-compose.yml` from *Quick start*, then run
-`docker compose up -d`.
+`docker compose up -d`. Complete the setup wizard at `http://localhost:8000`.
 
 ---
 
-## Optional features
+## Configuration
 
-Turn these on by editing `.env` and running `docker compose up -d` again.
+Most settings are now managed from the web UI (Settings → Configurazione runtime) and saved to
+`/config/settings.yaml`. This includes log level, backup, scraper enablement, scheduler intervals,
+and the Cloudflare solver.
 
-### Protect with a login
-Anyone on your network can otherwise reach the app. To require a password:
-
-```ini
-AUTH_ENABLED=true
-ADMIN_PASSWORD=choose-a-strong-password
-```
-
-The username is ignored; only the password matters. The same password also unlocks the OPDS catalog
-in e-reader apps. If you expose MangaSama beyond your home network, also put it behind an HTTPS
-reverse proxy.
-
-### Automatic backups
-```ini
-BACKUP_ENABLED=true
-```
-A daily, safe copy of the database is written to `/config/backups`.
-
-### Sites behind Cloudflare
-Some sources occasionally show a Cloudflare challenge. You can run the optional FlareSolverr helper:
-uncomment the `flaresolverr` service in `docker-compose.yml` and set `CLOUDFLARE_SOLVER=flaresolverr`
-in `.env`. Otherwise MangaSama simply falls back to another source.
-
----
-
-## Configuration reference
+Only the values needed before the UI can boot remain in `.env`:
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `DATA_DIR` | `/data` | Database + downloaded library folders |
-| `CONFIG_DIR` | `/config` | Configuration, cookie cache, backups |
-| `AUTH_ENABLED` | `false` | Set `true` (with `ADMIN_PASSWORD`) to require a login |
-| `ADMIN_PASSWORD` | _(empty)_ | The admin password when auth is on |
-| `AUTH_MAX_FAILURES` | `10` | Wrong-password tries before a temporary lockout |
-| `AUTH_LOCKOUT_SECONDS` | `60` | How long a client is blocked after too many failures |
-| `BACKUP_ENABLED` | `false` | Daily safe DB backup to `/config/backups` |
-| `CLOUDFLARE_SOLVER` | unset | `playwright` or `flaresolverr` |
-| `CORS_ORIGINS` | localhost dev URLs | Allowed browser origins (dev only; prod is same-origin) |
+| `DATA_DIR` | `/data` | SQLite DB + covers + default downloads |
+| `CONFIG_DIR` | `/config` | Runtime settings + cookies + backups |
+| `LOG_LEVEL` | `INFO` | Bootstrap log level |
+| `HOST` / `PORT` | `0.0.0.0` / `8000` | Bind address |
+| `CORS_ORIGINS` | localhost dev URLs | Allowed browser origins (dev only) |
 | `FORWARDED_ALLOW_IPS` | `*` | Proxy IPs trusted for `X-Forwarded-*`; tighten in production |
 
 See [`.env.example`](.env.example) for every option.
 
-### Security
+### Optional: FlareSolverr for Cloudflare-protected sources
 
-MangaSama is built for a **single user on a trusted home network**, with sensible defaults:
+Some sources occasionally show a Cloudflare challenge. You can run the optional FlareSolverr helper:
+uncomment the `flaresolverr` service in `docker-compose.yml`, then enable `flaresolverr` as the
+Cloudflare solver in the UI.
 
-- **Security headers** on every response (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`,
-  `Permissions-Policy`).
-- **Optional login** with a constant-time password check and a **brute-force lockout**.
-- **No secret leakage** — the API hides the database path, and unexpected errors return a generic
-  message (details are logged on the server only).
-- **Dependency hygiene** — Dependabot plus an advisory `pip-audit` / `npm audit` check in CI.
+---
 
-If you ever expose MangaSama to the internet: enable the login, use HTTPS via a reverse proxy, and
-restrict `FORWARDED_ALLOW_IPS` to that proxy.
+## Security
+
+- The admin account is **created during first-run setup** and stored as a bcrypt hash in
+  `/config/admin.json`. There is no default password.
+- The API and OPDS catalog require HTTP Basic auth with those credentials.
+- A brute-force lockout applies after `AUTH_MAX_FAILURES` wrong attempts from the same client.
+- Security headers (CSP, `X-Frame-Options`, `nosniff`, etc.) are sent on every response.
+- If you expose MangaSama beyond your home network, put it behind an HTTPS reverse proxy.
 
 ---
 
 ## Using MangaSama
 
-1. **Create a library** — give it a name, pick a type (manga / manhua / manhwa), and set a **Root
-   path** under `/data` (e.g. `/data/manga_it`).
-2. **Search** a series and **Add** it to the library.
+1. **Run the first-run setup** — open the app, create the admin account, and add one or more
+   libraries pointing to mounted folders (e.g. `/libraries/manga`).
+2. **Search** a series and **Add** it to a library.
 3. **Follow** it — MangaSama checks for new chapters on a schedule and downloads them.
 4. **Read** — point Komga/Kavita at the same folder, or use the OPDS catalog at
-   `http://<host>:8000/opds/v1.2/root` in your e-reader app.
+   `http://<host>:8000/opds/v1.2/root` in your e-reader app (same username/password).
 
-The **Settings** view shows provider/source health and lets you trigger a manual backup.
+The **Settings** view shows provider health, lets you edit runtime configuration, and triggers
+manual backups.
 
 ---
 

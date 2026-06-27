@@ -10,6 +10,7 @@ const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
+const username = ref('')
 const password = ref('')
 const loading = ref(false)
 
@@ -24,13 +25,13 @@ function redirectTarget(): string {
 }
 
 async function submit(): Promise<void> {
-  if (!password.value || loading.value) return
+  if (!username.value || !password.value || loading.value) return
   loading.value = true
   try {
-    await auth.login(password.value)
+    await auth.login(username.value, password.value)
     void router.push(redirectTarget())
   } catch (e) {
-    toast.error(apiError(e) || 'Password non valida')
+    toast.error(apiError(e) || 'Credenziali non valide')
   } finally {
     loading.value = false
   }
@@ -45,10 +46,21 @@ async function submit(): Promise<void> {
         MangaSama
       </div>
       <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">
-        Inserisci la password admin per accedere.
+        Inserisci le credenziali admin per accedere.
       </p>
+      <label for="login-username" class="mb-1 block text-xs font-medium text-slate-500">
+        Username
+      </label>
+      <input
+        id="login-username"
+        v-model="username"
+        type="text"
+        autocomplete="username"
+        placeholder="Username admin"
+        class="mb-3 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
+      />
       <label for="login-password" class="mb-1 block text-xs font-medium text-slate-500">
-        Password admin
+        Password
       </label>
       <input
         id="login-password"
@@ -58,7 +70,11 @@ async function submit(): Promise<void> {
         placeholder="Password admin"
         class="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800"
       />
-      <button type="submit" class="btn-primary mt-4 w-full justify-center" :disabled="!password || loading">
+      <button
+        type="submit"
+        class="btn-primary mt-4 w-full justify-center"
+        :disabled="!username || !password || loading"
+      >
         <LogIn class="size-4" />
         Accedi
       </button>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { Activity, Database, RefreshCw } from 'lucide-vue-next'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { Activity, Database, RefreshCw, Save } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { useSettingsStore } from '@/stores/settings'
+import type { AdminSettings, AdminSettingsPatch } from '@/types/api'
 
 const store = useSettingsStore()
 
@@ -10,6 +11,50 @@ const backingUp = ref(false)
 const backupMsg = ref<string | null>(null)
 const logLevel = ref('INFO')
 const healthRunning = ref(false)
+const adminSaving = ref(false)
+
+const adminForm = reactive<AdminSettings>({
+  log_level: 'INFO',
+  backup_enabled: false,
+  backup_retention_days: 7,
+  default_rate_limit_rpm: 30,
+  scraper_mangapark_enabled: false,
+  scraper_bato_enabled: true,
+  scraper_mangakakalot_enabled: true,
+  scheduler_follow_interval_min: 15,
+  scheduler_domain_health_min: 15,
+  scheduler_job_retention_days: 30,
+  cloudflare_solver: '',
+  flaresolverr_url: 'http://flaresolverr:8191/v1',
+  google_books_enabled: false,
+  mangaeden_enabled: false,
+})
+
+watch(
+  () => store.adminSettings,
+  (s) => {
+    if (s) Object.assign(adminForm, s)
+  },
+  { immediate: true },
+)
+
+async function saveAdminSettings(): Promise<void> {
+  adminSaving.value = true
+  try {
+    const patch: AdminSettingsPatch = {}
+    for (const key of Object.keys(adminForm) as Array<keyof AdminSettings>) {
+      if (store.adminSettings?.[key] !== adminForm[key]) {
+        patch[key] = adminForm[key] as never
+      }
+    }
+    await store.patchAdminSettings(patch)
+    toast.success('Configurazione salvata')
+  } catch {
+    toast.error('Salvataggio configurazione fallito')
+  } finally {
+    adminSaving.value = false
+  }
+}
 
 async function doBackup(): Promise<void> {
   backingUp.value = true
@@ -69,6 +114,7 @@ function fmtDate(iso: string | null): string {
 onMounted(async () => {
   await store.load()
   if (store.effective) logLevel.value = store.effective.log_level
+  await store.loadAdminSettings()
 })
 </script>
 
@@ -211,6 +257,157 @@ onMounted(async () => {
           </tbody>
         </table>
         <p v-else class="text-sm text-slate-500">Nessun provider monitorato.</p>
+      </div>
+
+      <!-- Runtime configuration -->
+      <div class="card p-4 lg:col-span-2">
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-500">Configurazione runtime</h2>
+          <button
+            type="button"
+            class="btn"
+            :disabled="adminSaving"
+            @click="saveAdminSettings"
+          >
+            <Save class="size-4" />
+            Salva
+          </button>
+        </div>
+
+        <div v-if="store.adminStatus === 'loading'" class="text-sm text-slate-500">Caricamento…</div>
+        <div
+          v-else-if="store.adminStatus === 'error'"
+          class="text-sm text-rose-600 dark:text-rose-400"
+        >
+          {{ store.adminError }}
+        </div>
+
+        <div v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <label for="admin-log-level" class="mb-1 block text-xs font-medium text-slate-500">Log level</label>
+            <select
+              id="admin-log-level"
+              v-model="adminForm.log_level"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            >
+              <option>DEBUG</option>
+              <option>INFO</option>
+              <option>WARNING</option>
+              <option>ERROR</option>
+            </select>
+          </div>
+
+          <div class="flex items-end gap-3">
+            <label class="flex items-center gap-2 text-sm">
+              <input v-model="adminForm.backup_enabled" type="checkbox" class="size-4" />
+              Backup giornaliero
+            </label>
+          </div>
+
+          <div>
+            <label for="admin-backup-retention" class="mb-1 block text-xs font-medium text-slate-500">Retention backup (giorni)</label>
+            <input
+              id="admin-backup-retention"
+              v-model.number="adminForm.backup_retention_days"
+              type="number"
+              min="1"
+              max="365"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+
+          <div>
+            <label for="admin-rate-limit" class="mb-1 block text-xs font-medium text-slate-500">Rate limit default (rpm)</label>
+            <input
+              id="admin-rate-limit"
+              v-model.number="adminForm.default_rate_limit_rpm"
+              type="number"
+              min="1"
+              max="240"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+
+          <div>
+            <label for="admin-cloudflare" class="mb-1 block text-xs font-medium text-slate-500">Cloudflare solver</label>
+            <select
+              id="admin-cloudflare"
+              v-model="adminForm.cloudflare_solver"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            >
+              <option value="">Disabilitato</option>
+              <option value="playwright">Playwright</option>
+              <option value="flaresolverr">FlareSolverr</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="admin-flaresolverr" class="mb-1 block text-xs font-medium text-slate-500">FlareSolverr URL</label>
+            <input
+              id="admin-flaresolverr"
+              v-model="adminForm.flaresolverr_url"
+              type="text"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+
+          <div class="flex items-end gap-3">
+            <label class="flex items-center gap-2 text-sm">
+              <input v-model="adminForm.scraper_bato_enabled" type="checkbox" class="size-4" />
+              Bato.to
+            </label>
+          </div>
+
+          <div class="flex items-end gap-3">
+            <label class="flex items-center gap-2 text-sm">
+              <input v-model="adminForm.scraper_mangakakalot_enabled" type="checkbox" class="size-4" />
+              MangaKakalot
+            </label>
+          </div>
+
+          <div class="flex items-end gap-3">
+            <label class="flex items-center gap-2 text-sm">
+              <input v-model="adminForm.scraper_mangapark_enabled" type="checkbox" class="size-4" />
+              MangaPark
+            </label>
+          </div>
+
+          <div>
+            <label for="admin-follow-interval" class="mb-1 block text-xs font-medium text-slate-500">Follow ogni (min)</label>
+            <input
+              id="admin-follow-interval"
+              v-model.number="adminForm.scheduler_follow_interval_min"
+              type="number"
+              min="1"
+              max="1440"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+
+          <div>
+            <label for="admin-domain-interval" class="mb-1 block text-xs font-medium text-slate-500">Domain health ogni (min)</label>
+            <input
+              id="admin-domain-interval"
+              v-model.number="adminForm.scheduler_domain_health_min"
+              type="number"
+              min="1"
+              max="1440"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+
+          <div>
+            <label for="admin-job-retention" class="mb-1 block text-xs font-medium text-slate-500">Retention job (giorni)</label>
+            <input
+              id="admin-job-retention"
+              v-model.number="adminForm.scheduler_job_retention_days"
+              type="number"
+              min="1"
+              max="365"
+              class="w-full rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>

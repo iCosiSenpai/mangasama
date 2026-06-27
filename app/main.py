@@ -56,13 +56,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         version=__version__,
         data_dir=str(settings.data_dir),
         config_dir=str(settings.config_dir),
-        auth_enabled=settings.auth_enabled,
     )
-    if settings.auth_enabled and not settings.admin_password:
+    from app.core.setup_state import apply_runtime_settings, is_setup_completed
+
+    apply_runtime_settings(settings)
+
+    if is_setup_completed():
+        logger.info("mangasama.auth_ready", setup_completed=True)
+    else:
         logger.warning(
-            "mangasama.auth_misconfigured",
-            reason="AUTH_ENABLED=true but ADMIN_PASSWORD is empty; the gate "
-            "fails closed and will reject every request.",
+            "mangasama.setup_required",
+            reason="No admin account found; the UI will show the first-run setup wizard.",
         )
 
     # Ensure runtime dirs.
@@ -138,9 +142,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def _path_needs_auth(path: str) -> bool:
-    """Protect the API and OPDS catalog; leave `/api/health` and the SPA
-    static assets public."""
+    """Protect the API and OPDS catalog; leave `/api/health`, `/api/setup/*`
+    and the SPA static assets public so the wizard and healthcheck work."""
     if path == "/api/health":
+        return False
+    if path.startswith("/api/setup"):
         return False
     return path.startswith("/api") or path.startswith("/opds")
 
@@ -182,19 +188,21 @@ def create_app() -> FastAPI:
     def _record_failure(ip: str) -> None:
         auth_failures.setdefault(ip, []).append(time.time())
 
-    # Optional single-admin HTTP Basic gate over /api and /opds. No-op unless
-    # AUTH_ENABLED=true. `/api/health` and the SPA static stay public so the
-    # Docker healthcheck and the login page can load.
+    # Single-admin HTTP Basic gate over /api and /opds. Active once the first-run
+    # setup has created /config/admin.json. `/api/health`, `/api/setup/*` and the
+    # SPA static assets stay public so the healthcheck and wizard can load.
     @app.middleware("http")
     async def _auth_guard(request, call_next):
-        settings = get_settings()
+        from app.core.setup_state import is_setup_completed
+
         if (
-            settings.auth_enabled
+            is_setup_completed()
             and request.method != "OPTIONS"
             and _path_needs_auth(request.url.path)
         ):
-            from app.core.auth import check_basic_auth
+            from app.core.auth import verify_admin_auth
 
+            settings = get_settings()
             ip = request.client.host if request.client else "unknown"
             window = float(settings.auth_lockout_seconds)
             if _is_locked(ip, max_failures=settings.auth_max_failures, window=window):
@@ -203,7 +211,7 @@ def create_app() -> FastAPI:
                     headers={"Retry-After": str(settings.auth_lockout_seconds)},
                 )
             auth_header = request.headers.get("Authorization")
-            if not check_basic_auth(auth_header, settings.admin_password):
+            if not verify_admin_auth(auth_header):
                 # Only count attempts that actually supplied credentials, so a
                 # browser's first (header-less) request isn't penalised.
                 if auth_header:
@@ -317,6 +325,8 @@ def _try_include_routers(app: FastAPI) -> None:
         ("app.api.jobs", "/api"),
         ("app.api.covers", "/api"),
         ("app.api.settings_api", "/api"),
+        ("app.api.admin_settings", "/api"),
+        ("app.api.setup", "/api"),
         ("app.api.opds", ""),
     ):
         try:

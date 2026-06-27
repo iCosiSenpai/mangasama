@@ -1,35 +1,33 @@
 """HTTP Basic auth helper for the single-admin gate.
 
-Enabled via `AUTH_ENABLED=true` + `ADMIN_PASSWORD=...`. We use Basic auth
-because OPDS readers (Moon+ Reader, KyBook, …) and browsers support it
-natively. The username is ignored (single-admin model); only the password
-matters, compared in constant time.
+The admin account is created by the first-run web setup and persisted in
+``/config/admin.json``. We use Basic auth because OPDS readers (Moon+ Reader,
+KyBook, …) and browsers support it natively. The username is no longer ignored:
+it must match the one chosen during setup, and the password is compared in
+constant time against a bcrypt hash.
 """
 
 from __future__ import annotations
 
-import base64
-import binascii
-import secrets
+from app.core.setup_state import verify_basic_auth
 
 
 def check_basic_auth(authorization_header: str | None, password: str) -> bool:
-    """Return True iff the `Authorization: Basic` header carries `password`.
+    """Legacy constant-time check against a plain password.
 
-    Fails closed: a missing/malformed header, or an empty configured
-    password, returns False.
+    Kept for callers that still pass the env-configured admin password; new
+    code should use :func:`verify_admin_auth`.
     """
-    if not authorization_header or not password:
-        return False
-    scheme, _, b64 = authorization_header.partition(" ")
-    if scheme.lower() != "basic" or not b64:
-        return False
-    try:
-        decoded = base64.b64decode(b64, validate=True).decode("utf-8")
-    except (binascii.Error, ValueError):
-        return False
-    _, _, supplied = decoded.partition(":")  # "user:pass" → pass
-    return secrets.compare_digest(supplied, password)
+    return verify_basic_auth(authorization_header)
 
 
-__all__ = ["check_basic_auth"]
+def verify_admin_auth(authorization_header: str | None) -> bool:
+    """Return True iff the ``Authorization: Basic`` header matches ``admin.json``.
+
+    Fails closed: missing/malformed header, missing admin file, wrong username or
+    wrong password all return False.
+    """
+    return verify_basic_auth(authorization_header)
+
+
+__all__ = ["check_basic_auth", "verify_admin_auth"]

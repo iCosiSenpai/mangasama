@@ -13,7 +13,7 @@ Validation:
 
 from __future__ import annotations
 
-import contextlib
+import os
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -117,15 +117,39 @@ async def _count_active_series(session: AsyncSession, library_id: int) -> int:
 # ---------------------------------------------------------------- write
 
 
+def _ensure_root_path(root_path: str) -> Path:
+    """Create the root path if possible and verify it is writable.
+
+    Raises a clear ValueError when the folder is missing or read-only, which
+    usually means the host path was not mounted in docker-compose.
+    """
+    path = Path(root_path)
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise ValueError(
+            f"impossibile creare la cartella libreria {root_path!r}: {e}"
+        ) from e
+    if not path.exists():
+        raise ValueError(
+            f"la cartella libreria {root_path!r} non esiste: verifica il mount in docker-compose"
+        )
+    if not path.is_dir():
+        raise ValueError(f"il percorso {root_path!r} non è una cartella")
+    if not os.access(path, os.W_OK):
+        raise ValueError(
+            f"la cartella libreria {root_path!r} non è scrivibile: verifica i permessi del mount"
+        )
+    return path
+
+
 async def create_library(
     session: AsyncSession, payload: LibraryCreate,
 ) -> Library:
     _validate_providers(payload.providers)
-    # Make sure the on-disk root exists; benign for the "user wants to point
-    # at /mnt/nas/manga" case. If it can't be created (permission denied, volume
-    # not mounted yet) we don't block row creation.
-    with contextlib.suppress(OSError):
-        Path(payload.root_path).mkdir(parents=True, exist_ok=True)
+    # Require a mounted, writable folder. This fails fast when the user forgot
+    # to map the host path in docker-compose.
+    _ensure_root_path(payload.root_path)
 
     lib = Library(
         name=payload.name,
@@ -164,8 +188,7 @@ async def update_library(
             continue
         setattr(lib, field_name, value)
     if patch.root_path is not None:
-        with contextlib.suppress(OSError):
-            Path(patch.root_path).mkdir(parents=True, exist_ok=True)
+        _ensure_root_path(patch.root_path)
     try:
         await session.flush()
     except IntegrityError as e:

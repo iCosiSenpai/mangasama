@@ -6,8 +6,8 @@ import 'vue-sonner/style.css'
 import AppShell from '@/components/AppShell.vue'
 
 const route = useRoute()
-// The login screen renders standalone (no sidebar/header).
-const bare = computed(() => route.name === 'login')
+// The login and setup screens render standalone (no sidebar/header).
+const bare = computed(() => route.name === 'login' || route.name === 'setup')
 </script>
 
 <template>

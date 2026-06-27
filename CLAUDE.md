@@ -63,10 +63,11 @@ docker compose up -d
 ## Deployment (NAS / self-host)
 
 Single container, two persistent volumes (`/data` for the DB + library files, `/config` for
-YAML/cookies/backups). `docker compose up -d` builds the image (frontend + backend), runs
-migrations via the entrypoint, and serves the SPA + API + OPDS on `:8000`. See `README.md`
-(Quickstart / Deploy) and `docs/architecture.md`. Optional env: `AUTH_ENABLED` + `ADMIN_PASSWORD`
-(HTTP Basic gate), `BACKUP_ENABLED` (daily SQLite backup), `CLOUDFLARE_SOLVER`.
+runtime settings/cookies/backups) plus one bind mount per manga folder. `docker compose up -d`
+pulls/builds the image, runs migrations via the entrypoint, and serves the SPA + API + OPDS on
+`:8000`. See `README.md` (Quickstart / Deploy) and `docs/architecture.md`. On first boot a setup
+wizard creates the admin account and initial libraries; most settings are then managed from the GUI
+and saved to `/config/settings.yaml`.
 
 ## Hard rules — architectural invariants (never break)
 
@@ -94,6 +95,6 @@ migrations via the entrypoint, and serves the SPA + API + OPDS on `:8000`. See `
 
 ## Known open items (optional)
 
-Cloudflare solver dispatch (CF sources currently just fail over); `series_external_ids` is globally
-unique on `(provider, external_id)` so the same source series can't yet live in two libraries.
-See `ROADMAP.md` §9 for the full history and `CHANGELOG.md` for the release summary.
+`series_external_ids` is globally unique on `(provider, external_id)` so the same source series
+can't yet live in two libraries. See `ROADMAP.md` §9 for the full history and `CHANGELOG.md` for
+the release summary.

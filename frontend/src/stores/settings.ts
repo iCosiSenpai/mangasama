@@ -1,7 +1,13 @@
 import { ref, type Ref } from 'vue'
 import { defineStore } from 'pinia'
 import { apiError, client } from '@/api/client'
-import type { EffectiveSettings, HealthSnapshot, SettingsPatch } from '@/types/api'
+import type {
+  AdminSettings,
+  AdminSettingsPatch,
+  EffectiveSettings,
+  HealthSnapshot,
+  SettingsPatch,
+} from '@/types/api'
 
 type Status = 'idle' | 'loading' | 'ready' | 'error'
 
@@ -9,6 +15,9 @@ type Status = 'idle' | 'loading' | 'ready' | 'error'
 export const useSettingsStore = defineStore('settings', () => {
   const effective: Ref<EffectiveSettings | null> = ref(null)
   const health: Ref<HealthSnapshot | null> = ref(null)
+  const adminSettings: Ref<AdminSettings | null> = ref(null)
+  const adminStatus: Ref<Status> = ref('idle')
+  const adminError: Ref<string | null> = ref(null)
   const status: Ref<Status> = ref('idle')
   const error: Ref<string | null> = ref(null)
 
@@ -51,9 +60,30 @@ export const useSettingsStore = defineStore('settings', () => {
     await load()
   }
 
+  async function loadAdminSettings(): Promise<void> {
+    adminStatus.value = 'loading'
+    adminError.value = null
+    try {
+      const { data } = await client.get<AdminSettings>('/api/admin/settings')
+      adminSettings.value = data
+      adminStatus.value = 'ready'
+    } catch (e) {
+      adminError.value = apiError(e)
+      adminStatus.value = 'error'
+    }
+  }
+
+  async function patchAdminSettings(body: AdminSettingsPatch): Promise<void> {
+    const { data } = await client.put<AdminSettings>('/api/admin/settings', body)
+    adminSettings.value = data
+  }
+
   return {
     effective,
     health,
+    adminSettings,
+    adminStatus,
+    adminError,
     status,
     error,
     load,
@@ -61,5 +91,7 @@ export const useSettingsStore = defineStore('settings', () => {
     patchSettings,
     runHealthCheck,
     resetProvider,
+    loadAdminSettings,
+    patchAdminSettings,
   }
 })

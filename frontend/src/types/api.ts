@@ -72,6 +72,43 @@ export interface SettingsPatch {
   default_rate_limit_rpm?: number
 }
 
+export interface SetupAdmin {
+  username: string
+  password: string
+}
+
+export interface SetupPayload {
+  admin: SetupAdmin
+  libraries: LibraryCreate[]
+  settings?: Record<string, unknown>
+}
+
+export interface SetupStatus {
+  setup_required: boolean
+  has_users: boolean
+  has_libraries: boolean
+  default_settings: Record<string, unknown>
+}
+
+export interface AdminSettings {
+  log_level: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR'
+  backup_enabled: boolean
+  backup_retention_days: number
+  default_rate_limit_rpm: number
+  scraper_mangapark_enabled: boolean
+  scraper_bato_enabled: boolean
+  scraper_mangakakalot_enabled: boolean
+  scheduler_follow_interval_min: number
+  scheduler_domain_health_min: number
+  scheduler_job_retention_days: number
+  cloudflare_solver: '' | 'playwright' | 'flaresolverr'
+  flaresolverr_url: string
+  google_books_enabled: boolean
+  mangaeden_enabled: boolean
+}
+
+export type AdminSettingsPatch = Partial<AdminSettings>
+
 export interface LibraryStats {
   series_count: number
   chapters_count: number

@@ -4,6 +4,23 @@ All notable changes to MangaSama are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); this project aims to follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] — 2026-06-27
+
+### Added
+- **First-run setup wizard** (`/setup`): admin account (username + bcrypt-hashed password) and initial
+  libraries are created from the web UI, not from environment variables.
+- **Runtime configuration GUI**: log level, backup, scraper enablement, scheduler intervals,
+  Cloudflare solver and FlareSolverr URL are now editable in Settings and persisted to
+  `/config/settings.yaml`.
+- **Multi-library bind mounts**: `docker-compose.yml` is now production-oriented, with explicit bind
+  mounts per manga folder (e.g. `/volume1/manga:/libraries/manga`) and only bootstrap env vars.
+
+### Changed
+- **Breaking**: `AUTH_ENABLED` and `ADMIN_PASSWORD` env vars are removed. Auth is mandatory once
+  setup completes; credentials are managed via the setup wizard.
+- **Breaking**: `BACKUP_ENABLED` and most runtime env vars are removed; configure them in the UI.
+- `/opds` now always requires Basic auth after setup (before it was public unless auth was enabled).
+
 ## [0.1.0] — 2026-06-27
 
 First functional release. An Italian-first, self-hosted manga downloader.

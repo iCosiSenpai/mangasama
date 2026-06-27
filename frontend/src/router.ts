@@ -36,6 +36,12 @@ export const router = createRouter({
       meta: { public: true },
     },
     {
+      path: '/setup',
+      name: 'setup',
+      component: () => import('@/views/SetupView.vue'),
+      meta: { public: true },
+    },
+    {
       path: '/jobs',
       name: 'jobs',
       component: () => import('@/views/JobsView.vue'),
@@ -50,9 +56,24 @@ export const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  if (to.meta.public) return true
+  // Setup wizard is public and must be shown when no admin account exists.
+  if (to.name === 'setup') return true
+  if (to.meta.public) {
+    // If setup is still required, even public pages (login) should redirect to setup.
+    try {
+      const { data } = await client.get('/api/setup/status')
+      if (data.setup_required) return { name: 'setup' }
+    } catch {
+      // Let the route proceed if the status check fails; the app is degraded.
+    }
+    return true
+  }
   try {
-    await client.get('/api/settings')
+    const [{ data: setup }] = await Promise.all([
+      client.get('/api/setup/status'),
+      client.get('/api/settings'),
+    ])
+    if (setup.setup_required) return { name: 'setup' }
     return true
   } catch (e: unknown) {
     const status = (e as { status?: number }).status

@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api import (
+    admin_settings,
     chapters,
     covers,
     follow,
@@ -19,6 +20,7 @@ from app.api import (
     search,
     series,
     settings_api,
+    setup,
 )
 
 api_router = APIRouter()
@@ -30,3 +32,5 @@ api_router.include_router(follow.router)
 api_router.include_router(jobs.router)
 api_router.include_router(covers.router)
 api_router.include_router(settings_api.router)
+api_router.include_router(admin_settings.router)
+api_router.include_router(setup.router)

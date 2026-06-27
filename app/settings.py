@@ -43,12 +43,9 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    # Auth
-    auth_enabled: bool = False
-    admin_password: str = ""
-    # Brute-force mitigation for the Basic gate: after `auth_max_failures`
-    # wrong-password attempts from one client within the window, that client
-    # is locked out (HTTP 429) for `auth_lockout_seconds`.
+    # Auth: the admin account is created via the first-run web setup and stored
+    # in /config/admin.json. AUTH_ENABLED / ADMIN_PASSWORD env vars are no
+    # longer used. Brute-force mitigation still applies to the Basic gate.
     auth_max_failures: int = 10
     auth_lockout_seconds: int = 60
 
