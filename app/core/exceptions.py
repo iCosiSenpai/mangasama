@@ -72,11 +72,29 @@ class InvalidComicInfo(PackageError):
     """ComicInfo.xml generation produced invalid data."""
 
 
+# --- Queue / capacity ------------------------------------------------------
+
+
+class DownloadQueueFull(MangaSamaError):
+    """The in-process download queue is at capacity (→ HTTP 503).
+
+    Callers should retry later; the workers are draining the backlog.
+    """
+
+
 # --- Config / settings -----------------------------------------------------
 
 
 class ConfigError(MangaSamaError):
     """User configuration is invalid or missing."""
+
+
+class UnknownScraper(ConfigError, KeyError):
+    """A scraper name has no registered implementation (→ HTTP 400).
+
+    Subclasses both `ConfigError` (so the HTTP boundary maps it to 400) and
+    `KeyError` (so existing ``except KeyError`` call sites keep working).
+    """
 
 
 class LibraryNotFound(MangaSamaError, KeyError):
@@ -89,3 +107,11 @@ class SeriesNotFoundDB(MangaSamaError, KeyError):
 
 class ChapterNotFoundDB(MangaSamaError, KeyError):
     """Chapter ID does not exist in the DB layer, or has no `file_path` yet."""
+
+
+class JobNotFound(MangaSamaError, KeyError):
+    """Job ID does not exist in `provider_jobs`."""
+
+
+class CoverNotFound(MangaSamaError, KeyError):
+    """Series has no cover, or the cached cover file is missing."""

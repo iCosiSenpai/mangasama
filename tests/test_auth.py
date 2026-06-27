@@ -66,3 +66,45 @@ async def test_auth_disabled_allows_all() -> None:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         r = await ac.get("/api/libraries")
     assert r.status_code == 200
+
+
+@pytest.fixture
+async def lockout_client(monkeypatch):
+    """Auth enabled with a low failure threshold to exercise the lockout."""
+    monkeypatch.setenv("AUTH_ENABLED", "true")
+    monkeypatch.setenv("ADMIN_PASSWORD", "secret")
+    monkeypatch.setenv("AUTH_MAX_FAILURES", "3")
+    monkeypatch.setenv("AUTH_LOCKOUT_SECONDS", "60")
+    get_settings.cache_clear()
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        yield ac
+    get_settings.cache_clear()
+
+
+@pytest.mark.asyncio
+async def test_repeated_wrong_passwords_trigger_lockout(lockout_client: AsyncClient) -> None:
+    wrong = {"Authorization": _basic("admin", "nope")}
+    # First 3 wrong attempts → 401.
+    for _ in range(3):
+        r = await lockout_client.get("/api/libraries", headers=wrong)
+        assert r.status_code == 401
+    # 4th attempt is locked out → 429 with Retry-After.
+    r = await lockout_client.get("/api/libraries", headers=wrong)
+    assert r.status_code == 429
+    assert r.headers.get("Retry-After") == "60"
+
+
+@pytest.mark.asyncio
+async def test_headerless_requests_do_not_count_toward_lockout(
+    lockout_client: AsyncClient,
+) -> None:
+    # A browser's first (credential-less) request must not trip the lock.
+    for _ in range(5):
+        r = await lockout_client.get("/api/libraries")
+        assert r.status_code == 401
+    # A correct password still works (no lockout accrued).
+    r = await lockout_client.get(
+        "/api/libraries", headers={"Authorization": _basic("admin", "secret")}
+    )
+    assert r.status_code == 200

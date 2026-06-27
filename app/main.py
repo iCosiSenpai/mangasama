@@ -56,7 +56,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         version=__version__,
         data_dir=str(settings.data_dir),
         config_dir=str(settings.config_dir),
+        auth_enabled=settings.auth_enabled,
     )
+    if settings.auth_enabled and not settings.admin_password:
+        logger.warning(
+            "mangasama.auth_misconfigured",
+            reason="AUTH_ENABLED=true but ADMIN_PASSWORD is empty; the gate "
+            "fails closed and will reject every request.",
+        )
 
     # Ensure runtime dirs.
     for p in (
@@ -150,14 +157,30 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS for local dev (Vite runs on a different port).
+    # CORS for local dev (Vite runs on a different port). Configurable via
+    # CORS_ORIGINS (comma-separated). Production serves the SPA same-origin.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origins=settings.cors_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Per-app, in-memory brute-force tracker for the Basic gate. Keyed by
+    # client IP → list of recent failure timestamps. Only failures that
+    # carried an Authorization header count (the initial header-less browser
+    # challenge must not trip the lock).
+    auth_failures: dict[str, list[float]] = {}
+
+    def _is_locked(ip: str, *, max_failures: int, window: float) -> bool:
+        now = time.time()
+        recent = [t for t in auth_failures.get(ip, []) if now - t < window]
+        auth_failures[ip] = recent
+        return len(recent) >= max_failures
+
+    def _record_failure(ip: str) -> None:
+        auth_failures.setdefault(ip, []).append(time.time())
 
     # Optional single-admin HTTP Basic gate over /api and /opds. No-op unless
     # AUTH_ENABLED=true. `/api/health` and the SPA static stay public so the
@@ -172,12 +195,55 @@ def create_app() -> FastAPI:
         ):
             from app.core.auth import check_basic_auth
 
-            if not check_basic_auth(request.headers.get("Authorization"), settings.admin_password):
+            ip = request.client.host if request.client else "unknown"
+            window = float(settings.auth_lockout_seconds)
+            if _is_locked(ip, max_failures=settings.auth_max_failures, window=window):
+                return Response(
+                    status_code=429,
+                    headers={"Retry-After": str(settings.auth_lockout_seconds)},
+                )
+            auth_header = request.headers.get("Authorization")
+            if not check_basic_auth(auth_header, settings.admin_password):
+                # Only count attempts that actually supplied credentials, so a
+                # browser's first (header-less) request isn't penalised.
+                if auth_header:
+                    _record_failure(ip)
+                    logger.warning("mangasama.auth_failed", client=ip)
                 return Response(
                     status_code=401,
                     headers={"WWW-Authenticate": 'Basic realm="MangaSama"'},
                 )
+            # Successful auth clears any recorded failures for this client.
+            auth_failures.pop(ip, None)
         return await call_next(request)
+
+    # Security headers on every response. CSP is skipped for the interactive
+    # API docs (Swagger/ReDoc load CDN assets and use inline scripts).
+    _csp = (
+        "default-src 'self'; "
+        "img-src 'self' data: blob:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self'; "
+        "connect-src 'self'; "
+        "font-src 'self' data:; "
+        "object-src 'none'; "
+        "base-uri 'self'; "
+        "frame-ancestors 'none'"
+    )
+    _docs_paths = {"/api/docs", "/api/redoc", "/api/openapi.json"}
+
+    @app.middleware("http")
+    async def _security_headers(request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+        )
+        if request.url.path not in _docs_paths:
+            response.headers.setdefault("Content-Security-Policy", _csp)
+        return response
 
     # Static frontend (built Vue app).
     web_dir = Path(settings.frontend_out_dir)
@@ -277,7 +343,7 @@ def main() -> None:  # pragma: no cover
         port=settings.port,
         reload=settings.debug,
         proxy_headers=True,
-        forwarded_allow_ips="*",
+        forwarded_allow_ips=settings.forwarded_allow_ips,
     )
 
 

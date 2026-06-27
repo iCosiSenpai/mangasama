@@ -1,0 +1,14 @@
+# Build-from-source override.
+#
+# Use this when you want to build the image locally instead of pulling the
+# published one from GHCR (e.g. when developing, or on an architecture without
+# a published image):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#
+services:
+  mangasama:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: mangasama/mangasama:local

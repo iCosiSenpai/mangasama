@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, toRef, watch } from 'vue'
 import { Loader2, Plus, Search, X } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSearchStore } from '@/stores/search'
 import { useSeriesStore } from '@/stores/series'
+import { useModalA11y } from '@/composables/useModalA11y'
 
 const props = defineProps<{
   open: boolean
@@ -20,6 +21,9 @@ const emit = defineEmits<{
 const libraries = useLibrariesStore()
 const search = useSearchStore()
 const series = useSeriesStore()
+
+const panel = ref<HTMLElement | null>(null)
+useModalA11y(toRef(props, 'open'), panel, () => emit('close'))
 
 const ui = reactive({
   libraryId: props.defaultLibraryId ?? null,
@@ -106,6 +110,7 @@ function onBackdropClick(): void {
       @click.self="onBackdropClick"
     >
       <div
+        ref="panel"
         class="ml-auto flex h-full w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900"
       >
         <header
@@ -124,10 +129,11 @@ function onBackdropClick(): void {
 
         <div class="space-y-3 border-b border-slate-200 p-5 dark:border-slate-800">
           <div>
-            <label class="mb-1 block text-xs font-medium text-slate-500">
+            <label for="search-library" class="mb-1 block text-xs font-medium text-slate-500">
               Libreria di destinazione
             </label>
             <select
+              id="search-library"
               v-model.number="ui.libraryId"
               class="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-800"
             >
@@ -150,6 +156,7 @@ function onBackdropClick(): void {
                 ref="queryInput"
                 v-model="ui.query"
                 type="text"
+                aria-label="Termine di ricerca"
                 placeholder="es. One Piece"
                 class="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm dark:border-slate-700 dark:bg-slate-800"
                 :disabled="!ui.libraryId"

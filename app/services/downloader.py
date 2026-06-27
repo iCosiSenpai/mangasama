@@ -31,6 +31,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.exceptions import DownloadQueueFull
 from app.core.hashing import sha256_bytes
 from app.core.http_client import get_http
 from app.models.orm import Chapter, Library, Page, ProviderJob, Series, Volume
@@ -285,7 +286,12 @@ class DownloadQueue:
         self._workers: list[asyncio.Task] = []
 
     def enqueue(self, task: DownloadTask) -> None:
-        self._queue.put_nowait(task)
+        try:
+            self._queue.put_nowait(task)
+        except asyncio.QueueFull as e:
+            raise DownloadQueueFull(
+                f"download queue is full (max {self._queue.maxsize}); retry later"
+            ) from e
 
     def pending(self) -> int:
         return self._queue.qsize()

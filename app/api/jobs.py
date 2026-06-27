@@ -9,17 +9,27 @@ from __future__ import annotations
 
 import asyncio
 import json
+from typing import Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
+from app.core.exceptions import JobNotFound
 from app.deps import DBSession
 from app.models.orm import ProviderJob
 from app.schemas.job import JobRead
 from app.services.job_events import get_job_event_bus
 
 router = APIRouter(tags=["jobs"])
+
+#: Allowed job lifecycle states (mirrors `ProviderJob.status`).
+JobStatus = Literal["pending", "running", "done", "error"]
+#: Allowed job kinds (mirrors `ProviderJob.job_type`).
+JobType = Literal[
+    "scrape_chapter", "scrape_series", "download",
+    "pack_cbz", "metadata_enrich", "health_check",
+]
 
 #: Seconds between SSE keepalive comments when no events arrive.
 _KEEPALIVE_SECONDS = 15.0
@@ -28,8 +38,8 @@ _KEEPALIVE_SECONDS = 15.0
 @router.get("/jobs", response_model=list[JobRead])
 async def list_jobs(
     session: DBSession,
-    status: str | None = Query(default=None, max_length=16),
-    job_type: str | None = Query(default=None, max_length=32),
+    status: JobStatus | None = Query(default=None),
+    job_type: JobType | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> list[JobRead]:
@@ -76,5 +86,5 @@ async def get_job(job_id: int, session: DBSession) -> JobRead:
         await session.execute(select(ProviderJob).where(ProviderJob.id == job_id))
     ).scalar_one_or_none()
     if row is None:
-        raise HTTPException(status_code=404, detail=f"job {job_id} not found")
+        raise JobNotFound(f"job {job_id} not found")
     return JobRead.model_validate(row)
